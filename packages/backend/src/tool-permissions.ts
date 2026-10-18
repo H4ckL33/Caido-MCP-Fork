@@ -40,13 +40,13 @@ const BASE_GROUPS: ToolGroupSeed[] = [
         tools: [],
         defaultMode: "disabled",
     },
-    { id: ToolGroupId.EnvSafe, label: "Env safe", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.EnvUnsafe, label: "Env unsafe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.FilterSafe, label: "Filter safe", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.EnvSafe, label: "Env safe", tools: [], defaultMode: "disabled" },
+    { id: ToolGroupId.EnvUnsafe, label: "Env unsafe", tools: [], defaultMode: "disabled" },
+    { id: ToolGroupId.FilterSafe, label: "Filter safe", tools: [], defaultMode: "confirm" },
     { id: ToolGroupId.FilterUnsafe, label: "Filter unsafe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.FindingSafe, label: "Finding safe", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.FindingSafe, label: "Finding safe", tools: [], defaultMode: "confirm" },
     { id: ToolGroupId.FindingUnsafe, label: "Finding unsafe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.HostedFileSafe, label: "HostedFile safe", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.HostedFileSafe, label: "HostedFile safe", tools: [], defaultMode: "confirm" },
     {
         id: ToolGroupId.HostedFileUnsafe,
         label: "HostedFile unsafe",
@@ -66,30 +66,30 @@ const BASE_GROUPS: ToolGroupSeed[] = [
         defaultMode: "confirm",
     },
     { id: ToolGroupId.ProjectSafe, label: "Project info", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.ReplaySafe, label: "Replay safe", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.ReplayUnsafe, label: "Replay unsafe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.RequestSafe, label: "Request safe", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.RequestUnsafe, label: "Request unsafe", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.ReplaySafe, label: "Replay safe", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.ReplayUnsafe, label: "Replay unsafe", tools: [], defaultMode: "disabled" },
+    { id: ToolGroupId.RequestSafe, label: "Request safe", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.RequestUnsafe, label: "Request unsafe", tools: [], defaultMode: "disabled" },
     { id: ToolGroupId.RuntimeSafe, label: "Runtime info", tools: [], defaultMode: "auto" },
     { id: ToolGroupId.SitemapSafe, label: "Sitemap", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.ScopeSafe, label: "Scope safe", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.ScopeSafe, label: "Scope safe", tools: [], defaultMode: "confirm" },
     { id: ToolGroupId.ScopeUnsafe, label: "Scope unsafe", tools: [], defaultMode: "confirm" },
     {
         id: ToolGroupId.TamperSafe,
         label: "Tamper (Match & Replace) safe",
         tools: [],
-        defaultMode: "auto",
+        defaultMode: "disabled",
     },
     {
         id: ToolGroupId.TamperUnsafe,
         label: "Tamper (Match & Replace) unsafe",
         tools: [],
-        defaultMode: "confirm",
+        defaultMode: "disabled",
     },
-    { id: ToolGroupId.WsSafe, label: "WS History", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.WsSafe, label: "WS History", tools: [], defaultMode: "confirm" },
 ];
 
-const DEFAULT_MODE: ToolGroupMode = "confirm";
+const DEFAULT_MODE: ToolGroupMode = "disabled";
 const HIDDEN_GROUP_IDS = new Set<string>([]);
 
 const createBaseGroups = (): ToolGroup[] =>

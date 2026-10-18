@@ -11,7 +11,6 @@ import {
     HTTP_HISTORY_FIELD_PATHS,
     normalizeHttpSerialization,
     normalizeRegexExcerptProjection,
-    previewValue,
     resolveFieldProjection,
     resolveHttpBodyMaterialization,
     resolveRegexExcerpt,
@@ -307,6 +306,8 @@ const parseSetCookieHeader = (value: string) => {
     return { name: first.slice(0, idx).trim(), value: first.slice(idx + 1).trim() };
 };
 
+const redactCredentialValue = (value: string) => `<redacted:${value.trim().length}-chars>`;
+
 const summarizeRequests = async (sdk: ToolContext["sdk"], input: z.infer<typeof summarySchema>) => {
     const page = await executeRequestPage(sdk, input);
     return page.items.map((item) => ({ request: item.request, response: item.response }));
@@ -586,7 +587,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions }: ToolCo
                     byKey.set(key, {
                         source,
                         name,
-                        valuePreview: previewValue(value),
+                        valuePreview: redactCredentialValue(value),
                         count: 1,
                         firstSeenRequestId: toNumericId(requestId),
                         lastSeenRequestId: toNumericId(requestId),
@@ -659,7 +660,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions }: ToolCo
                 if (existing === undefined) {
                     byHeader.set(key, {
                         header,
-                        valuePreview: previewValue(value),
+                        valuePreview: redactCredentialValue(value),
                         count: 1,
                         firstSeenRequestId: toNumericId(requestId),
                         lastSeenRequestId: toNumericId(requestId),

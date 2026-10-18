@@ -5,7 +5,7 @@ const rootDir = process.cwd();
 const rootPkgPath = join(rootDir, "package.json");
 
 const readJson = async (path) => JSON.parse(await readFile(path, "utf8"));
-const writeJson = async (path, data) => writeFile(path, JSON.stringify(data, null, 2) + "\n");
+const writeJson = async (path, data) => writeFile(path, JSON.stringify(data, null, 4) + "\n");
 
 const rootPkg = await readJson(rootPkgPath);
 const version = rootPkg.version;

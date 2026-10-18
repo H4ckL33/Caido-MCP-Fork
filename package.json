@@ -1,15 +1,16 @@
 {
-    "name": "caido-vibe-hacking",
+    "name": "agent-safe-caido-mcp",
     "private": true,
     "packageManager": "pnpm@10.28.2+sha512.41872f037ad22f7348e3b1debbaf7e867cfd448f2726d9cf74c08f19507c31d2c8e7a11525b983febc2df640b5438dee6023ebb1f84ed43cc2d654d2bc326264",
-    "version": "3.0.1",
-    "description": "Caido MCP plugin",
+    "version": "3.0.2",
+    "description": "Hardened local Caido MCP plugin derived from Vibe Hacking",
     "main": "index.js",
     "scripts": {
         "sync:version": "node scripts/sync-version.mjs",
         "prebuild": "node scripts/sync-version.mjs",
-        "build": "pnpm exec caido-dev build .",
-        "watch": "pnpm exec caido-dev watch .",
+        "build": "caido-dev build .",
+        "test": "tsx --test packages/backend/src/**/*.test.ts",
+        "watch": "caido-dev watch .",
         "format": "prettier --write .",
         "smoke": "pnpm dlx tsx scripts/mcp-smoke/index.ts",
         "smoke:integration": "pnpm dlx tsx scripts/mcp-smoke/integration.ts",
@@ -31,6 +32,7 @@
         "postcss": "^8.5.28",
         "postcss-prefixwrap": "^1.58.0",
         "prettier": "^3.9.6",
+        "tsx": "^4.20.6",
         "typescript": "^6.0.3"
     }
 }

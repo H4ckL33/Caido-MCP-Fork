@@ -23,13 +23,15 @@ export type BackendAPI = {
 };
 
 export type BackendEvents = {
-    "vibe-hacking:tool-action-confirmation-requested": (
+    "agent-safe-caido-mcp:tool-action-confirmation-requested": (
         action: string,
         details: string,
         id: number,
     ) => void;
-    "vibe-hacking:mcp-server-settings-changed": (settings: McpSettings) => void;
-    "vibe-hacking:tool-group-permission-modes-changed": (permissions: ToolPermissions) => void;
+    "agent-safe-caido-mcp:mcp-server-settings-changed": (settings: McpSettings) => void;
+    "agent-safe-caido-mcp:tool-group-permission-modes-changed": (
+        permissions: ToolPermissions,
+    ) => void;
 };
 
 export type ToolGroupMode = "auto" | "confirm" | "disabled";
@@ -51,7 +53,7 @@ export type ToolPermissions = {
 };
 
 export const MCP_DEFAULT_HOST = "127.0.0.1";
-export const MCP_DEFAULT_PORT = 3333;
+export const MCP_DEFAULT_PORT = 3334;
 export const MCP_ENDPOINT_PATH = "/mcp";
 export const MCP_CONTROL_ENDPOINT_PATH = "/control";
-export const MCP_PLUGIN_VERSION = "3.0.1";
+export const MCP_PLUGIN_VERSION = "3.0.2";

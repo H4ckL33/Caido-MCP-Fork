@@ -1,6 +1,6 @@
-# Vibe Hacking
+# Agent Safe Caido MCP
 
-A Caido MCP plugin that exposes a clean, safe, and well‑documented tool surface for agents. It standardizes tool schemas, descriptions, and behaviors across requests, replay, filters, scopes, tamper rules, and WebSocket history.
+A hardened local fork of [Vibe Hacking](https://github.com/vvvvvvvvvvel/VibeHacking) for controlled web-audit automation. It keeps the upstream tool surface while using conservative defaults, bounded confirmations, and credential redaction.
 
 ## Highlights
 
@@ -8,6 +8,10 @@ A Caido MCP plugin that exposes a clean, safe, and well‑documented tool surfac
 - **Tool governance**: group tools into safe/unsafe buckets and control them with `auto`, `confirm`, or `disabled` modes.
 - **Clear UX**: user‑friendly tool names in the UI (no SDK internals).
 - **History-first output**: request and WebSocket tools use stable list/get envelopes, Caido-native filters, field projection, and bounded body serialization.
+- **Fail-closed defaults**: unknown, traffic-producing, environment, and tamper operations start disabled.
+- **Bounded confirmation**: unanswered confirmations expire after 15 seconds and cannot be executed later.
+- **Credential summaries**: cookie and authentication-header values are redacted instead of previewed.
+- **Side-by-side testing**: the fork uses its own plugin ID and port `3334`, so it can be validated before replacing the upstream plugin.
 
 ![Overview](./assets/screenshot-overview.png)
 
@@ -28,6 +32,8 @@ A Caido MCP plugin that exposes a clean, safe, and well‑documented tool surfac
 - Use the **Tools** section to set each group to `auto`, `confirm`, or `disabled`.
 - Call tools from your agent and rely on consistent JSON outputs.
 
+The labels inherited from upstream describe feature families, not a security boundary. Review every tool listed in a group before changing it to `auto`.
+
 ## API Control
 
 The plugin exposes a localhost-only control endpoint at `http://127.0.0.1:<port>/control`.
@@ -37,16 +43,16 @@ another interface, control stays local on the same port.
 ```bash
 curl -sS -X POST "$CONTROL_URL" \
   -H "content-type: application/json" \
-  -d '{"method":"setMcpServerEnabled","params":{"enabled":true}}'
+  -d '{"method":"getMcpServerSettings"}'
 ```
 
 Control requests are accepted only when the TCP peer is loopback, for example `127.0.0.1`
 or `::1`. If MCP is bound to `0.0.0.0`, the control route is still served by that listener,
 but non-loopback peers receive `403`.
 
-Supported methods: `getMcpServerSettings`, `setMcpServerEnabled`,
-`updateMcpServerConfig`, `getToolGroupPermissionModes`, `setToolGroupPermissionMode`,
-and `setAllToolGroupPermissionModes`.
+The loopback control endpoint is intentionally read-only. Supported methods are
+`getMcpServerSettings` and `getToolGroupPermissionModes`. Configuration and permission changes
+must be made in the Caido plugin interface.
 
 ## Tooling Notes
 

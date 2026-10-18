@@ -3,7 +3,7 @@ import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodType } from "zod";
 
 import type { ConfirmActionStore } from "../confirm-actions";
-import type { ToolGroupId, ToolPermissionsStore } from "../tool-permissions";
+import { ToolGroupId, type ToolPermissionsStore } from "../tool-permissions";
 import type { MCPSDK } from "../types/sdk";
 
 import type { ActionPayload, ToolResult } from "./shared";
@@ -17,6 +17,21 @@ export type ToolContext = {
 };
 
 const toolActionRegistries = new WeakMap<McpServer, Map<string, RegisteredTool>>();
+
+const READ_ONLY_GROUPS = new Set<ToolGroupId>([
+    ToolGroupId.ProjectSafe,
+    ToolGroupId.ProxyPassthroughSafe,
+    ToolGroupId.RequestSafe,
+    ToolGroupId.RuntimeSafe,
+    ToolGroupId.SitemapSafe,
+    ToolGroupId.WsSafe,
+]);
+
+const OPEN_WORLD_ACTIONS = new Set([
+    "sdk.requests.send",
+    "sdk.requests.sendRaw",
+    "sdk.replay.startTask",
+]);
 
 export const attachToolActionRegistry = (
     server: McpServer,
@@ -47,15 +62,21 @@ const executeAction = async (
             },
         );
         sdk.api.send(
-            "vibe-hacking:tool-action-confirmation-requested",
+            "agent-safe-caido-mcp:tool-action-confirmation-requested",
             payload.action,
             formatDetails(payload),
             id,
         );
         const result = await promise;
         if (!result.confirmed) {
+            const disposition = result.reason ?? "rejected";
             return {
-                content: [{ type: "text", text: `User rejected action ${payload.action}` }],
+                content: [
+                    {
+                        type: "text",
+                        text: `Action ${payload.action} was not executed (${disposition})`,
+                    },
+                ],
             };
         }
         if (result.error !== undefined) {
@@ -91,7 +112,12 @@ export const registerToolAction = (
         confirm?: never;
     },
 ): RegisteredTool => {
+    const readOnly = READ_ONLY_GROUPS.has(config.group);
     const annotations: ToolAnnotations = {
+        readOnlyHint: readOnly,
+        destructiveHint: !readOnly,
+        idempotentHint: readOnly,
+        openWorldHint: OPEN_WORLD_ACTIONS.has(config.action),
         ...config.annotations,
     };
     store.registerAction(config.action, config.handler);

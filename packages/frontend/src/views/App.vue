@@ -541,12 +541,12 @@ const fetchToolPermissions = async () => {
 const registerBackendStateEvents = () => {
     if (stopBackendEvents.length > 0) return;
     stopBackendEvents.push(
-        sdk.backend.onEvent("vibe-hacking:mcp-server-settings-changed", (next) => {
+        sdk.backend.onEvent("agent-safe-caido-mcp:mcp-server-settings-changed", (next) => {
             applySettings(next);
         }).stop,
     );
     stopBackendEvents.push(
-        sdk.backend.onEvent("vibe-hacking:tool-group-permission-modes-changed", (next) => {
+        sdk.backend.onEvent("agent-safe-caido-mcp:tool-group-permission-modes-changed", (next) => {
             toolPermissions.value = next;
         }).stop,
     );
@@ -673,8 +673,8 @@ const copyControlUrl = async () => {
     await copyText(settings.value?.controlUrl, "API control URL");
 };
 
-const mcpUrl = computed(() => settings.value?.url ?? "http://127.0.0.1:3333/mcp");
-const controlUrl = computed(() => settings.value?.controlUrl ?? "http://127.0.0.1:3333/control");
+const mcpUrl = computed(() => settings.value?.url ?? "http://127.0.0.1:3334/mcp");
+const controlUrl = computed(() => settings.value?.controlUrl ?? "http://127.0.0.1:3334/control");
 
 const controlCurl = (payload: string) =>
     `curl -sS -X POST "${controlUrl.value}" -H "content-type: application/json" -d '${payload}'`;
@@ -682,12 +682,12 @@ const controlCurl = (payload: string) =>
 const clientGuideExamples = computed<ClientGuideExample[]>(() => [
     {
         title: "Codex",
-        command: `codex mcp add caido --url ${mcpUrl.value}`,
+        command: `codex mcp add agent-safe-caido --url ${mcpUrl.value}`,
         copyLabel: "Codex command",
     },
     {
         title: "Claude",
-        command: `claude mcp add --transport http caido ${mcpUrl.value}`,
+        command: `claude mcp add --transport http agent-safe-caido ${mcpUrl.value}`,
         copyLabel: "Claude command",
     },
 ]);
@@ -699,35 +699,9 @@ const apiGuideExamples = computed(() => [
         command: controlCurl('{"method":"getMcpServerSettings"}'),
     },
     {
-        method: "setMcpServerEnabled",
-        description: "Enable or disable the MCP endpoint while keeping control available.",
-        command: controlCurl('{"method":"setMcpServerEnabled","params":{"enabled":true}}'),
-    },
-    {
-        method: "updateMcpServerConfig",
-        description: "Change MCP bind host and TCP port.",
-        command: controlCurl(
-            '{"method":"updateMcpServerConfig","params":{"host":"127.0.0.1","port":3333}}',
-        ),
-    },
-    {
         method: "getToolGroupPermissionModes",
         description: "Read visible tool groups and their current modes.",
         command: controlCurl('{"method":"getToolGroupPermissionModes"}'),
-    },
-    {
-        method: "setToolGroupPermissionMode",
-        description: "Set one visible tool group to auto, confirm, or disabled.",
-        command: controlCurl(
-            '{"method":"setToolGroupPermissionMode","params":{"groupId":"request-safe","mode":"confirm"}}',
-        ),
-    },
-    {
-        method: "setAllToolGroupPermissionModes",
-        description: "Apply one mode to every visible tool group.",
-        command: controlCurl(
-            '{"method":"setAllToolGroupPermissionModes","params":{"mode":"disabled"}}',
-        ),
     },
 ]);
 

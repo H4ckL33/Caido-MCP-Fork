@@ -9,7 +9,7 @@ if (!fetchFn) {
     throw new Error("global fetch is not available. Use Node 18+.");
 }
 
-export const MCP_URL = process.env.MCP_URL ?? "http://127.0.0.1:3333/mcp";
+export const MCP_URL = process.env.MCP_URL ?? "http://127.0.0.1:3334/mcp";
 
 let rpcId = 1;
 

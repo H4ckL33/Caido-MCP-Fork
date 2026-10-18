@@ -34,13 +34,7 @@ export class McpHttpServer {
         this.sdk = sdk;
         this.controlHandler = createMcpControlHandler({
             getMcpServerSettings: () => this.getMcpServerSettings(),
-            setMcpServerEnabled: async (enabled) => await this.setMcpServerEnabled(enabled),
-            updateMcpServerConfig: async (config) => await this.updateMcpServerConfig(config),
             getToolGroupPermissionModes: () => this.getToolGroupPermissionModes(),
-            setToolGroupPermissionMode: async (groupId, mode) =>
-                await this.setToolGroupPermissionMode(groupId, mode),
-            setAllToolGroupPermissionModes: async (mode) =>
-                await this.setAllToolGroupPermissionModes(mode),
         });
         this.listeners = new McpListenerManager({
             sdk,
@@ -176,10 +170,10 @@ export class McpHttpServer {
     }
 
     private emitSettingsChanged(settings = this.getMcpServerSettings()) {
-        this.sdk.api.send("vibe-hacking:mcp-server-settings-changed", settings);
+        this.sdk.api.send("agent-safe-caido-mcp:mcp-server-settings-changed", settings);
     }
 
     private emitToolPermissionsChanged(permissions = this.getToolGroupPermissionModes()) {
-        this.sdk.api.send("vibe-hacking:tool-group-permission-modes-changed", permissions);
+        this.sdk.api.send("agent-safe-caido-mcp:tool-group-permission-modes-changed", permissions);
     }
 }

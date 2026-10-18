@@ -110,7 +110,7 @@ const attachMaskClose = (
 
 const moveMaskIntoPlugin = (mask: HTMLElement | undefined) => {
     if (mask === undefined) return;
-    const pluginRoot = document.getElementById("plugin--vibe-hacking");
+    const pluginRoot = document.getElementById("plugin--agent-safe-caido-mcp");
     if (pluginRoot === null) return;
     if (pluginRoot.contains(mask)) return;
     pluginRoot.appendChild(mask);

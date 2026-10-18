@@ -15,7 +15,7 @@
  *   - The target host is reachable from Caido's upstream.
  *
  * Config via env:
- *   MCP_URL               (default http://127.0.0.1:3333/mcp)
+ *   MCP_URL               (default http://127.0.0.1:3334/mcp)
  *   INTEGRATION_HOST      target host   (default example.com)
  *   INTEGRATION_PORT      target port   (default 443)
  *   INTEGRATION_TLS       "true"/"false" (default true)

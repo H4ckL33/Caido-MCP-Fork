@@ -37,7 +37,7 @@ export class McpRuntime {
         if (!this.server) {
             this.server = new McpServer(
                 {
-                    name: "vibe-hacking-server",
+                    name: "agent-safe-caido-mcp",
                     version: MCP_PLUGIN_VERSION,
                 },
                 {
@@ -90,7 +90,7 @@ export class McpRuntime {
     private createRequestServer() {
         const server = new McpServer(
             {
-                name: "vibe-hacking-server",
+                name: "agent-safe-caido-mcp",
                 version: MCP_PLUGIN_VERSION,
             },
             {
@@ -236,6 +236,7 @@ export class McpRuntime {
     }
 
     async stop() {
+        this.confirmStore.cancelPendingActions();
         await this.closeActiveSse();
     }
 

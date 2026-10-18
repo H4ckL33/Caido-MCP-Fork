@@ -1,54 +1,24 @@
 import { Buffer } from "buffer";
 
 import { Blob, Response } from "caido:http";
-import type { McpConfigInput, McpSettings, ToolGroupMode, ToolPermissions } from "shared";
+import type { McpSettings, ToolPermissions } from "shared";
 import { z } from "zod";
 
 import type { HttpHandler } from "./server";
 
 type ControlOperations = {
     getMcpServerSettings: () => McpSettings;
-    setMcpServerEnabled: (enabled: boolean) => Promise<McpSettings>;
-    updateMcpServerConfig: (config: McpConfigInput) => Promise<McpSettings>;
     getToolGroupPermissionModes: () => ToolPermissions;
-    setToolGroupPermissionMode: (groupId: string, mode: ToolGroupMode) => Promise<ToolPermissions>;
-    setAllToolGroupPermissionModes: (mode: ToolGroupMode) => Promise<ToolPermissions>;
 };
 
 const controlRequestSchema = z
     .object({
-        method: z.enum([
-            "getMcpServerSettings",
-            "setMcpServerEnabled",
-            "updateMcpServerConfig",
-            "getToolGroupPermissionModes",
-            "setToolGroupPermissionMode",
-            "setAllToolGroupPermissionModes",
-        ]),
+        method: z.enum(["getMcpServerSettings", "getToolGroupPermissionModes"]),
         params: z.unknown().optional(),
     })
     .strict();
 
 const emptyParamsSchema = z.object({}).strict();
-const setMcpServerEnabledParamsSchema = z.object({ enabled: z.boolean() }).strict();
-const updateMcpServerConfigParamsSchema = z
-    .object({
-        host: z.string().trim().min(1),
-        port: z.number().int().min(1).max(65535),
-    })
-    .strict();
-const toolGroupModeSchema = z.union([
-    z.literal("auto"),
-    z.literal("confirm"),
-    z.literal("disabled"),
-]);
-const setToolGroupPermissionModeParamsSchema = z
-    .object({
-        groupId: z.string().trim().min(1),
-        mode: toolGroupModeSchema,
-    })
-    .strict();
-const setAllToolGroupPermissionModesParamsSchema = z.object({ mode: toolGroupModeSchema }).strict();
 
 const jsonResponse = (body: unknown, status = 200) =>
     new Response(new Blob([JSON.stringify(body)]), {
@@ -110,43 +80,12 @@ export function createMcpControlHandler(operations: ControlOperations): HttpHand
                     emptyParamsSchema.parse(normalizeParams(payload.params));
                     return jsonResponse({ ok: true, result: operations.getMcpServerSettings() });
                 }
-                case "setMcpServerEnabled": {
-                    const params = setMcpServerEnabledParamsSchema.parse(
-                        normalizeParams(payload.params),
-                    );
-                    const result = await operations.setMcpServerEnabled(params.enabled);
-                    return jsonResponse({ ok: true, result });
-                }
-                case "updateMcpServerConfig": {
-                    const params = updateMcpServerConfigParamsSchema.parse(
-                        normalizeParams(payload.params),
-                    );
-                    const result = await operations.updateMcpServerConfig(params);
-                    return jsonResponse({ ok: true, result });
-                }
                 case "getToolGroupPermissionModes": {
                     emptyParamsSchema.parse(normalizeParams(payload.params));
                     return jsonResponse({
                         ok: true,
                         result: operations.getToolGroupPermissionModes(),
                     });
-                }
-                case "setToolGroupPermissionMode": {
-                    const params = setToolGroupPermissionModeParamsSchema.parse(
-                        normalizeParams(payload.params),
-                    );
-                    const result = await operations.setToolGroupPermissionMode(
-                        params.groupId,
-                        params.mode,
-                    );
-                    return jsonResponse({ ok: true, result });
-                }
-                case "setAllToolGroupPermissionModes": {
-                    const params = setAllToolGroupPermissionModesParamsSchema.parse(
-                        normalizeParams(payload.params),
-                    );
-                    const result = await operations.setAllToolGroupPermissionModes(params.mode);
-                    return jsonResponse({ ok: true, result });
                 }
             }
         } catch (err) {

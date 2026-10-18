@@ -7,13 +7,13 @@ import prefixwrap from "postcss-prefixwrap";
 
 import { MCP_PLUGIN_VERSION } from "./packages/shared";
 
-const id = "vibe-hacking";
+const id = "agent-safe-caido-mcp";
 // noinspection JSUnusedGlobalSymbols
 export default defineConfig({
     id: id,
-    name: "Vibe Hacking",
+    name: "Agent Safe Caido MCP",
     version: MCP_PLUGIN_VERSION,
-    description: "Caido MCP plugin",
+    description: "Hardened local Caido MCP plugin derived from Vibe Hacking",
     author: {
         name: "vvvvvvvvvvel",
         email: "vvvvvvvvvvel@proton.me",
