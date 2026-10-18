@@ -136,6 +136,17 @@ Watch mode:
 pnpm watch
 ```
 
+## Upstream maintenance
+
+The fork keeps `vvvvvvvvvvel/VibeHacking` as `upstream`. A scheduled GitHub
+workflow compares the fork with `upstream/main` every week and opens or updates
+an issue when commits require review. It never merges, tags, releases, or
+changes the installed plugin automatically.
+
+Handle every update in a dedicated branch. Review the upstream diff, preserve
+the conservative permission model, run the backend tests and typecheck, build
+the plugin package, and repeat the local MCP smoke test before merging.
+
 ## License
 
 MIT
