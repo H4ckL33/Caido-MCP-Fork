@@ -70,6 +70,26 @@ must be made in the Caido plugin interface.
 - `list_sitemap_entry_requests` returns concrete HTTP history-shaped items and supports the same `serialization`, `regex_excerpt`, `fields`, and `exclude_fields` controls as `list_requests`.
 - `fields` and `exclude_fields` project item payloads while preserving envelopes such as `page_info`, `items`, `requested`, `found`, and `results`.
 
+### Kali WSL proxy bridge
+
+Caido and the MCP remain bound to Windows loopback. When Kali runs under WSL2
+with NAT networking, an elevated PowerShell session can expose only the Caido
+proxy port to the private WSL adapter:
+
+```powershell
+./scripts/ensure-wsl-caido-bridge.ps1 -Action Ensure
+```
+
+The script owns and replaces only its named firewall rules and its port-proxy
+entry for port `8080`. It validates that the gateway belongs to a WSL adapter,
+does not expose the MCP port, and removes its changes if the connectivity check
+fails. Inspect or remove it with `-Action Status` or `-Action Remove`.
+
+Copy `scripts/caido-proxy-url` to `~/.local/bin` in Kali. Tools can then opt in
+per invocation, for example with `--proxy "$(caido-proxy-url)"`. Do not export a
+global proxy: every audit still requires its authorization, scope, and outbound
+content guards before traffic is sent.
+
 ## Core Tool Catalog
 
 Request history:
