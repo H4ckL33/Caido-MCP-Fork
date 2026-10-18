@@ -1,0 +1,71 @@
+name: Upstream check
+
+on:
+    schedule:
+        - cron: "17 7 * * 1"
+    workflow_dispatch: {}
+
+permissions:
+    contents: read
+    issues: write
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out the fork
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Fetch upstream
+              run: |
+                  git remote add upstream https://github.com/vvvvvvvvvvel/VibeHacking.git
+                  git fetch --no-tags upstream main
+                  git fetch --tags upstream
+
+            - name: Compare histories
+              id: compare
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  commits="$(git rev-list --count HEAD..upstream/main)"
+                  upstream_sha="$(git rev-parse upstream/main)"
+                  latest_tag="$(git tag --sort=-v:refname --merged upstream/main | head -n 1 || true)"
+                  echo "commits=${commits}" >> "$GITHUB_OUTPUT"
+                  echo "upstream_sha=${upstream_sha}" >> "$GITHUB_OUTPUT"
+                  echo "latest_tag=${latest_tag:-none}" >> "$GITHUB_OUTPUT"
+
+            - name: Open or update the review issue
+              if: steps.compare.outputs.commits != '0'
+              uses: actions/github-script@v8
+              env:
+                  COMMITS: ${{ steps.compare.outputs.commits }}
+                  UPSTREAM_SHA: ${{ steps.compare.outputs.upstream_sha }}
+                  LATEST_TAG: ${{ steps.compare.outputs.latest_tag }}
+              with:
+                  script: |
+                      const owner = context.repo.owner;
+                      const repo = context.repo.repo;
+                      const title = "[upstream] Review available updates";
+                      const body = [
+                        "The scheduled check found upstream changes that are not in this fork.",
+                        "",
+                        `- Commits pending review: ${process.env.COMMITS}`,
+                        `- Upstream main: ${process.env.UPSTREAM_SHA}`,
+                        `- Latest upstream tag: ${process.env.LATEST_TAG}`,
+                        "",
+                        "Create a dedicated update branch, review the diff, run tests and build the plugin. Do not merge or publish automatically."
+                      ].join("\n");
+                      const issues = await github.paginate(github.rest.issues.listForRepo, {
+                        owner,
+                        repo,
+                        state: "open",
+                        per_page: 100
+                      });
+                      const existing = issues.find((issue) => !issue.pull_request && issue.title === title);
+                      if (existing) {
+                        await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+                      } else {
+                        await github.rest.issues.create({ owner, repo, title, body });
+                      }
