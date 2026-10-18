@@ -7,6 +7,7 @@ import { Blob, Request as CaidoRequest, Response as CaidoResponse, Headers } fro
 import { MCP_PLUGIN_VERSION } from "shared";
 
 import type { ConfirmActionStore } from "./confirm-actions";
+import type { OperationPolicyStore } from "./operation-policy";
 import { registerMcpTools } from "./mcp-tools";
 import type { HandlerResult, HttpHandler } from "./server";
 import type { ToolPermissionsStore } from "./tool-permissions";
@@ -16,6 +17,7 @@ export class McpRuntime {
     private readonly sdk: MCPSDK;
     private readonly confirmStore: ConfirmActionStore;
     private readonly permissionsStore: ToolPermissionsStore;
+    private readonly policyStore: OperationPolicyStore;
     private toolsByAction: Map<string, RegisteredTool> = new Map();
     private server: McpServer | undefined;
     private activeSseSocket: Socket | undefined;
@@ -27,10 +29,12 @@ export class McpRuntime {
         sdk: MCPSDK,
         confirmStore: ConfirmActionStore,
         permissionsStore: ToolPermissionsStore,
+        policyStore: OperationPolicyStore,
     ) {
         this.sdk = sdk;
         this.confirmStore = confirmStore;
         this.permissionsStore = permissionsStore;
+        this.policyStore = policyStore;
     }
 
     private getServer() {
@@ -51,6 +55,7 @@ export class McpRuntime {
                 this.sdk,
                 this.confirmStore,
                 this.permissionsStore,
+                this.policyStore,
             );
             this.toolsByAction = registry.toolsByAction;
             this.applyToolPermissions();
@@ -104,6 +109,7 @@ export class McpRuntime {
             this.sdk,
             this.confirmStore,
             this.permissionsStore,
+            this.policyStore,
         );
         this.applyToolPermissionsTo(registry.toolsByAction);
         return { server, toolsByAction: registry.toolsByAction };

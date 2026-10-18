@@ -41,6 +41,7 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
         toolName: "list_scopes",
         description: "List scopes.",
         inputSchema: scopeGetAllSchema,
+        defaultMode: "auto",
         handler: async () => {
             const response = await sdk.graphql.execute(LIST_SCOPES_QUERY);
             return {
@@ -55,6 +56,7 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
         toolName: "get_scope",
         description: "Get scopes by ID.",
         inputSchema: scopeIdBatchSchema,
+        defaultMode: "auto",
         handler: async (params) => {
             const { ids } = scopeIdBatchSchema.parse(params);
             const results = await Promise.all(
@@ -77,6 +79,8 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
             "Create scopes. " +
             'Example: { "items": [{ "name": "In scope", "allowlist": ["example.com"], "denylist": ["*.png"] }] }.',
         inputSchema: scopeCreateSchema,
+        defaultMode: "confirm",
+        readOnly: false,
         handler: async (params) => {
             const { items } = scopeCreateSchema.parse(params);
             const results = await Promise.all(
@@ -101,6 +105,8 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
             "Update a scope. " +
             'Example: { "id": 1, "input": { "name": "In scope", "allowlist": ["example.com"], "denylist": [] } }.',
         inputSchema: scopeUpdateSchema,
+        defaultMode: "confirm",
+        readOnly: false,
         handler: async (params) => {
             const response = await sdk.graphql.execute(UPDATE_SCOPE_MUTATION, params);
             return {
@@ -115,6 +121,8 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
         toolName: "rename_scope",
         description: "Rename scopes.",
         inputSchema: scopeRenameSchema,
+        defaultMode: "confirm",
+        readOnly: false,
         handler: async (params) => {
             const { items } = scopeRenameSchema.parse(params);
             const results = await Promise.all(
@@ -135,6 +143,8 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
         toolName: "delete_scope",
         description: "Delete scopes by ID.",
         inputSchema: scopeIdBatchSchema,
+        defaultMode: "disabled",
+        readOnly: false,
         handler: async (params) => {
             const { ids } = scopeIdBatchSchema.parse(params);
             const results = await Promise.all(

@@ -364,46 +364,88 @@
                             </details>
                         </div>
                     </div>
-                    <div v-for="group in toolPermissions.groups" :key="group.id" class="tool-row">
-                        <div class="tool-info">
-                            <div class="tool-title">{{ group.label }}</div>
-                            <div class="tool-meta">
-                                <span
-                                    v-for="tool in group.tools"
-                                    :key="tool.action"
-                                    class="tool-tag"
+                    <template v-for="group in toolPermissions.groups" :key="group.id">
+                        <div class="tool-row">
+                            <div class="tool-info">
+                                <div class="tool-title">{{ group.label }}</div>
+                                <div class="tool-meta">
+                                    <span class="tool-tag">Group default</span>
+                                </div>
+                            </div>
+                            <div class="tool-controls">
+                                <details
+                                    class="tool-dropdown"
+                                    :class="{ busy: toolBusy[group.id] }"
                                 >
-                                    {{ tool.name }}
-                                </span>
+                                    <summary class="tool-dropdown__summary">
+                                        <span>{{
+                                            modeLabel(toolPermissions.states[group.id] ?? "confirm")
+                                        }}</span>
+                                        <span class="tool-dropdown__chevron" aria-hidden="true"
+                                            >▾</span
+                                        >
+                                    </summary>
+                                    <div class="tool-dropdown__menu" role="listbox">
+                                        <button
+                                            v-for="option in toolModeOptions"
+                                            :key="option.value"
+                                            type="button"
+                                            class="tool-dropdown__option"
+                                            :class="{
+                                                active:
+                                                    (toolPermissions.states[group.id] ??
+                                                        'confirm') === option.value,
+                                            }"
+                                            @click="
+                                                onToolModeSelect(group.id, option.value, $event)
+                                            "
+                                        >
+                                            {{ option.label }}
+                                        </button>
+                                    </div>
+                                </details>
                             </div>
                         </div>
-                        <div class="tool-controls">
-                            <details class="tool-dropdown" :class="{ busy: toolBusy[group.id] }">
-                                <summary class="tool-dropdown__summary">
-                                    <span>{{
-                                        modeLabel(toolPermissions.states[group.id] ?? "confirm")
-                                    }}</span>
-                                    <span class="tool-dropdown__chevron" aria-hidden="true">▾</span>
-                                </summary>
-                                <div class="tool-dropdown__menu" role="listbox">
-                                    <button
-                                        v-for="option in toolModeOptions"
-                                        :key="option.value"
-                                        type="button"
-                                        class="tool-dropdown__option"
-                                        :class="{
-                                            active:
-                                                (toolPermissions.states[group.id] ?? 'confirm') ===
-                                                option.value,
-                                        }"
-                                        @click="onToolModeSelect(group.id, option.value, $event)"
-                                    >
-                                        {{ option.label }}
-                                    </button>
+                        <div v-for="tool in group.tools" :key="tool.action" class="tool-row">
+                            <div class="tool-info">
+                                <div class="tool-title">↳ {{ tool.name }}</div>
+                                <div class="tool-meta">
+                                    <span class="tool-tag">{{ tool.action }}</span>
                                 </div>
-                            </details>
+                            </div>
+                            <div class="tool-controls">
+                                <details
+                                    class="tool-dropdown"
+                                    :class="{ busy: toolBusy[tool.action] }"
+                                >
+                                    <summary class="tool-dropdown__summary">
+                                        <span>{{ modeLabel(toolMode(tool)) }}</span>
+                                        <span class="tool-dropdown__chevron" aria-hidden="true"
+                                            >▾</span
+                                        >
+                                    </summary>
+                                    <div class="tool-dropdown__menu" role="listbox">
+                                        <button
+                                            v-for="option in toolModeOptions"
+                                            :key="option.value"
+                                            type="button"
+                                            class="tool-dropdown__option"
+                                            :class="{ active: toolMode(tool) === option.value }"
+                                            @click="
+                                                onSingleToolModeSelect(
+                                                    tool.action,
+                                                    option.value,
+                                                    $event,
+                                                )
+                                            "
+                                        >
+                                            {{ option.label }}
+                                        </button>
+                                    </div>
+                                </details>
+                            </div>
                         </div>
-                    </div>
+                    </template>
                 </div>
             </section>
 
@@ -451,6 +493,7 @@ import {
     MCP_PLUGIN_VERSION,
     type McpSettings,
     type ToolGroupMode,
+    type ToolGroupTool,
     type ToolPermissions,
 } from "shared";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
@@ -482,6 +525,7 @@ type ClientGuideExample = {
 };
 const toolModeOptions: { value: ToolGroupMode; label: string }[] = [
     { value: "auto", label: "Auto run" },
+    { value: "guarded-auto", label: "Guarded auto" },
     { value: "confirm", label: "Ask to confirm" },
     { value: "disabled", label: "Disabled" },
 ];
@@ -561,16 +605,31 @@ const onToolModeSelect = (groupId: string, mode: ToolGroupMode, event: Event) =>
     void updateToolGroupMode(groupId, mode);
 };
 
+const toolMode = (tool: ToolGroupTool): ToolGroupMode =>
+    toolPermissions.value?.toolStates[tool.action] ?? tool.defaultMode;
+
+const onSingleToolModeSelect = (action: string, mode: ToolGroupMode, event: Event) => {
+    const target = event.currentTarget;
+    if (target instanceof HTMLElement) {
+        const details = target.closest("details");
+        if (details) details.removeAttribute("open");
+    }
+    void updateSingleToolMode(action, mode);
+};
+
 const modeLabel = (mode: ToolGroupMode) =>
     toolModeOptions.find((option) => option.value === mode)?.label ?? "Ask to confirm";
 
 const bulkMode = computed<ToolGroupMode | undefined>(() => {
     const perms = toolPermissions.value;
     if (!perms || perms.groups.length === 0) return undefined;
-    const firstGroup = perms.groups[0];
-    if (firstGroup === undefined) return undefined;
-    const first = perms.states[firstGroup.id] ?? "confirm";
-    const allSame = perms.groups.every((group) => (perms.states[group.id] ?? "confirm") === first);
+    const modes = perms.groups.flatMap((group) => [
+        perms.states[group.id] ?? "confirm",
+        ...group.tools.map((tool) => perms.toolStates[tool.action] ?? tool.defaultMode),
+    ]);
+    const first = modes[0];
+    if (first === undefined) return undefined;
+    const allSame = modes.every((mode) => mode === first);
     return allSame ? first : undefined;
 });
 
@@ -621,6 +680,19 @@ const updateToolGroupMode = async (groupId: string, mode: ToolGroupMode) => {
         });
     } finally {
         toolBusy.value = { ...toolBusy.value, [groupId]: false };
+    }
+};
+
+const updateSingleToolMode = async (action: string, mode: ToolGroupMode) => {
+    toolBusy.value = { ...toolBusy.value, [action]: true };
+    try {
+        toolPermissions.value = await sdk.backend.setToolPermissionMode(action, mode);
+    } catch (err) {
+        sdk.window.showToast(`Failed to update tool.\n${err}`, {
+            variant: "error",
+        });
+    } finally {
+        toolBusy.value = { ...toolBusy.value, [action]: false };
     }
 };
 

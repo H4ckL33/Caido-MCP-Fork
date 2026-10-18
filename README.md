@@ -1,16 +1,19 @@
 # Agent Safe Caido MCP
 
-A hardened local fork of [Vibe Hacking](https://github.com/vvvvvvvvvvel/VibeHacking) for controlled web-audit automation. It keeps the upstream tool surface while using conservative defaults, bounded confirmations, and credential redaction.
+A hardened local fork of [Vibe Hacking](https://github.com/vvvvvvvvvvel/VibeHacking) for controlled web-audit automation. Version 4 adds grant-bound HTTP execution, delivery receipts, per-tool permissions, and reviewed Caido lifecycle adapters.
 
 ## Highlights
 
 - **MCP‑native**: exposes an MCP server over Streamable HTTP inside Caido.
-- **Tool governance**: group tools into safe/unsafe buckets and control them with `auto`, `confirm`, or `disabled` modes.
+- **Tool governance**: control every tool independently with `auto`, `guarded-auto`, `confirm`, or `disabled`, while retaining group and bulk controls.
 - **Clear UX**: user‑friendly tool names in the UI (no SDK internals).
 - **History-first output**: request and WebSocket tools use stable list/get envelopes, Caido-native filters, field projection, and bounded body serialization.
 - **Fail-closed defaults**: unknown, traffic-producing, environment, and tamper operations start disabled.
 - **Bounded confirmation**: unanswered confirmations expire after 15 seconds and cannot be executed later.
 - **Credential summaries**: cookie and authentication-header values are redacted instead of previewed.
+- **Execution grants**: active MCP HTTP sends bind project, authorization reference, scope digest, targets, methods, expiry, and request budget.
+- **Delivery receipts**: operation IDs are single-use and post-egress failures remain explicit `ambiguous-0..1` outcomes without automatic retry.
+- **Declared boundaries**: proxy-wide HTTP, active WebSocket, Automate start, and active workflow runs are reported unsupported until they can be inspected at the final send point.
 - **Side-by-side testing**: the fork uses its own plugin ID and port `3334`, so it can be validated before replacing the upstream plugin.
 
 ![Overview](./assets/screenshot-overview.png)
@@ -24,12 +27,12 @@ A hardened local fork of [Vibe Hacking](https://github.com/vvvvvvvvvvel/VibeHack
 
 ## Compatibility
 
-- **Caido**: v0.55.1+
+- **Caido**: tested with v0.58.3; GraphQL adapters must be re-admitted when the runtime schema changes.
 
 ## Usage
 
 - Open the plugin page in Caido.
-- Use the **Tools** section to set each group to `auto`, `confirm`, or `disabled`.
+- Use the **Tools** section to set group defaults or individual tools to `auto`, `guarded-auto`, `confirm`, or `disabled`.
 - Call tools from your agent and rely on consistent JSON outputs.
 
 The labels inherited from upstream describe feature families, not a security boundary. Review every tool listed in a group before changing it to `auto`.
@@ -97,8 +100,10 @@ Request history:
 - `list_requests`
 - `get_requests_by_ids`
 - `match_requests`
-- `send_requests`
-- `send_raw_requests`
+- `execute_guarded_requests`
+- `execute_guarded_raw_requests`
+- `send_requests` (legacy, disabled by default)
+- `send_raw_requests` (legacy, disabled by default)
 - `check_requests_scope`
 - `summarize_request_cookies`
 - `summarize_request_auth_headers`
@@ -131,7 +136,17 @@ Environment:
 - `list_environment_variables`
 - `set_environment_variable`
 
-Other existing groups cover Replay, Tamper rules, scopes, findings, hosted files, and project/runtime info.
+Policy and lifecycle:
+
+- `get_agent_safe_capabilities`
+- `install_execution_grant` / `revoke_execution_grant`
+- `list_execution_grants` / `list_egress_receipts`
+- project and scope lifecycle
+- workflow read/review/convert operations
+- Automate session read/create/assessment (no start)
+- intercept state and upstream proxy management
+
+Other existing groups cover Replay, Tamper rules, findings, hosted files, and environment/runtime info.
 
 Example request discovery:
 

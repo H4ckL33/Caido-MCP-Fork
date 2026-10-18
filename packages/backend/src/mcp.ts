@@ -1,10 +1,16 @@
-import { MCP_CONTROL_ENDPOINT_PATH, MCP_ENDPOINT_PATH, type McpSettings } from "shared";
+import {
+    MCP_CONTROL_ENDPOINT_PATH,
+    MCP_ENDPOINT_PATH,
+    type McpSettings,
+    type ToolGroupMode,
+} from "shared";
 
 import { ConfirmActionStore } from "./confirm-actions";
 import { createMcpControlHandler } from "./mcp-control";
 import { McpListenerManager } from "./mcp-listeners";
 import { McpRuntime } from "./mcp-runtime";
 import { McpSettingsStore } from "./mcp-settings";
+import { OperationPolicyStore } from "./operation-policy";
 import type { HttpHandler } from "./server";
 import { ToolPermissionsStore } from "./tool-permissions";
 import type { MCPSDK } from "./types/sdk";
@@ -23,6 +29,7 @@ export class McpHttpServer {
     private readonly sdk: MCPSDK;
     private readonly confirmStore: ConfirmActionStore;
     private readonly permissionsStore: ToolPermissionsStore;
+    private readonly policyStore: OperationPolicyStore;
     private readonly controlHandler: HttpHandler;
     private mcpHandler: HttpHandler | undefined;
 
@@ -30,7 +37,13 @@ export class McpHttpServer {
         this.settingsStore = new McpSettingsStore(sdk);
         this.confirmStore = new ConfirmActionStore();
         this.permissionsStore = new ToolPermissionsStore(sdk);
-        this.runtime = new McpRuntime(sdk, this.confirmStore, this.permissionsStore);
+        this.policyStore = new OperationPolicyStore(sdk.meta.path());
+        this.runtime = new McpRuntime(
+            sdk,
+            this.confirmStore,
+            this.permissionsStore,
+            this.policyStore,
+        );
         this.sdk = sdk;
         this.controlHandler = createMcpControlHandler({
             getMcpServerSettings: () => this.getMcpServerSettings(),
@@ -69,6 +82,7 @@ export class McpHttpServer {
                     this.settingsStore.applySnapshot(snapshot);
                 }
                 await this.permissionsStore.load();
+                await this.policyStore.load();
                 this.runtime.initializeTools();
                 await this.start();
             })().catch(async (error) => {
@@ -92,14 +106,21 @@ export class McpHttpServer {
         return this.permissionsStore.getPermissions();
     }
 
-    async setToolGroupPermissionMode(groupId: string, mode: "auto" | "confirm" | "disabled") {
+    async setToolGroupPermissionMode(groupId: string, mode: ToolGroupMode) {
         const next = await this.permissionsStore.setGroupMode(groupId, mode);
         this.runtime.applyToolPermissions();
         this.emitToolPermissionsChanged(next);
         return next;
     }
 
-    async setAllToolGroupPermissionModes(mode: "auto" | "confirm" | "disabled") {
+    async setToolPermissionMode(action: string, mode: ToolGroupMode) {
+        const next = await this.permissionsStore.setToolMode(action, mode);
+        this.runtime.applyToolPermissions();
+        this.emitToolPermissionsChanged(next);
+        return next;
+    }
+
+    async setAllToolGroupPermissionModes(mode: ToolGroupMode) {
         const next = await this.permissionsStore.setAllGroupModes(mode);
         this.runtime.applyToolPermissions();
         this.emitToolPermissionsChanged(next);

@@ -1,6 +1,6 @@
 ---
 name: caido-mcp
-description: Use the Caido MCP tools to inspect and act on captured HTTP/WebSocket traffic in Caido — HTTP history, Sitemap, WebSocket, Replay, scopes, proxy passthrough, findings, filters, environments, and Tamper (Match & Replace) rules. Covers HTTPQL filtering (including host filtering when scope is broad), compact field projections, regex excerpts, and safe evidence-focused workflows. Use whenever the task involves reading Caido traffic or driving Caido through MCP.
+description: Use the Agent Safe Caido MCP tools to inspect captured HTTP/WebSocket traffic, manage reviewed Caido state, and execute grant-bound HTTP requests with delivery receipts. Covers HTTPQL, projects, scopes, workflows, Automate assessment, upstream proxies, intercept state, compact evidence, per-tool permissions, and explicit unsupported boundaries. Use whenever the task involves reading Caido traffic or driving Caido through this fork.
 metadata:
     author: vvvvvvvvvvel
     compatibility: Requires a running Caido instance with the Vibe Hacking MCP plugin installed and reachable by the agent.
@@ -8,16 +8,18 @@ metadata:
 
 # Caido MCP
 
-Drive Caido through MCP: discover traffic read-only, narrow with Caido-native filters, pull exact evidence by ID, and send traffic only for active validation.
+Drive Caido through MCP: discover traffic read-only, narrow with Caido-native filters, pull exact evidence by ID, and use grant-bound tools for active HTTP validation.
 
 ## Operating Workflow
 
-1. Start read-only: HTTP history (`list_requests`) or Sitemap discovery with a small `fields` list.
-2. Narrow with Caido-native filters: HTTPQL for history, the `filter` object for Sitemap.
-3. Pull exact evidence by ID only after discovery (`get_requests_by_ids`, `list_sitemap_entry_requests`).
-4. Use `regex_excerpt` when only a token, ID, nonce, header, or error fragment is needed.
-5. Send traffic only when the user expects active validation. Prefer `options.save=true` for later evidence.
-6. Report IDs, filters, active sends, and remaining uncertainty.
+1. Start with `get_agent_safe_capabilities`; treat every reported `false` capability as unavailable.
+2. Start read-only: HTTP history (`list_requests`) or Sitemap discovery with a small `fields` list.
+3. Narrow with Caido-native filters: HTTPQL for history, the `filter` object for Sitemap.
+4. Pull exact evidence by ID only after discovery (`get_requests_by_ids`, `list_sitemap_entry_requests`).
+5. Use `regex_excerpt` when only a token, ID, nonce, header, or error fragment is needed.
+6. Before active HTTP, require an installed execution grant bound to the selected Caido project and canonical authorization/scope.
+7. Send only through `execute_guarded_requests` or `execute_guarded_raw_requests`, with a new `operation_id`.
+8. Report IDs, filters, receipts, active sends, and remaining uncertainty.
 
 Keep broad discovery body-light. Do not request raw bodies unless they are necessary evidence.
 
@@ -30,7 +32,7 @@ Discovery tools return **all** captured traffic by default — they are **not** 
 - `list_requests` never applies a scope filter; it only annotates `in_scope` per row (hidden from the default shape — request it with `fields: ["in_scope"]`).
 - `list_sitemap_roots` / `list_sitemap_descendants` / `list_websocket_streams` accept an optional `scope_id`; omit it to see everything.
 
-Caido scopes are often broad (for example `.+`, matching every host), so scope is usually useless for narrowing. **Filter by host with HTTPQL instead** (see below). Use `list_scopes` / `check_requests_scope` only when the user explicitly cares about scope membership.
+Caido scopes may be broader than the audit unit. **Filter by host with HTTPQL** (see below), and treat Caido scope only as an additional operational filter. `scope.normalized.json` and the execution grant remain authoritative for active traffic.
 
 ## HTTP History
 
@@ -116,31 +118,31 @@ Prefer narrow host/path/method filters first, then add raw/header/body terms onl
 
 ## Active Sends
 
-Use `send_requests` only for active validation. It sends saved requests by ID:
+The legacy `send_requests` and `send_raw_requests` tools are disabled by default because they do not produce grant-bound receipts. For saved requests use `execute_guarded_requests`:
 
 ```json
 {
+    "grant_id": "grant-2026-10-18",
+    "operation_id": "unique-operation-id",
     "ids": [123],
-    "options": { "save": true, "timeouts": { "global": 15000 } },
-    "serialization": {
-        "include_body": true,
-        "include_binary": false,
-        "max_response_body_chars": 4000,
-        "text_overflow_mode": "truncate"
-    }
+    "options": { "save": true, "timeouts": { "global": 15000 } }
 }
 ```
 
-To send a hand-crafted or modified request that is not saved, use `send_raw_requests` with base64 raw HTTP plus host/port/is_tls:
+For a crafted request use `execute_guarded_raw_requests` with inspectable base64 raw HTTP plus host/port/is_tls:
 
 ```json
 {
+    "grant_id": "grant-2026-10-18",
+    "operation_id": "another-unique-operation-id",
     "items": [{ "raw_base64": "<base64>", "host": "example.com", "port": 443, "is_tls": true }],
     "options": { "save": true }
 }
 ```
 
-Both return the live response. A send appears in Caido history only when `options.save=true`.
+Budget is reserved before egress and each request receives a receipt. Never reuse an `operation_id`. If a receipt becomes `ambiguous-0..1`, do not retry; inspect `list_egress_receipts` and reconcile history/state.
+
+The guard rejects out-of-grant targets or methods, forbidden outbound content, compressed bodies, and non-UTF-8 material that cannot be inspected. It validates again at the last point before the send.
 
 For IDOR/auth checks, first gather two exact request IDs, compare with `get_requests_by_ids`, then send only the minimum request needed.
 
@@ -220,9 +222,18 @@ List streams first, then messages by stream:
 }
 ```
 
+WebSocket support is historical/read-only. Do not perform active frame sends: this version has no per-frame final egress inspection.
+
+## Projects, Workflows, Automate, and Upstreams
+
+- Project and scope reads are automatic. Create, rename, select, update, intercept, and upstream mutations require confirmation by default; deletion tools are disabled.
+- Convert workflows may be created, reviewed, updated, and run on local input when they contain no process or network capability. Active/passive workflow execution against traffic is not exposed.
+- Automate sessions may be read, created from saved requests, and assessed. Starting Automate is not exposed because generated requests cannot yet be inspected individually at the final send point.
+- Upstream listings omit stored passwords. Confirmation details redact credential, authorization, cookie, password, secret, token, and authorization-evidence fields.
+
 ## Replay and Other Tools
 
-- Replay: find source requests in history, then use `send_to_replay` or `send_to_replay_from_filter` to build sessions. Use `create_replay_pipeline_session` when preparing Caido's HTTP/1 pipeline Replay flow for ordered/last-byte/single-packet validation. Use `start_replay_task` (by `session_ids`) only when active Replay execution of those sessions is intended; it sends each session's current request. For a modified/crafted raw request, prefer `send_raw_requests`.
+- Replay: use read and preparation tools for local organization. Active Replay execution is disabled by default and is not a substitute for guarded HTTP sends.
 - Proxy passthrough: use `get_proxy_passthrough_options` to inspect allowlist, denylist, and out-of-scope passthrough. Use `set_proxy_passthrough_options` to update only the intended fields; omitted fields keep their current values.
 - Scopes: see the Scope section. Use `list_scopes` / `get_scope` / `check_requests_scope` only when scope membership matters.
 - Filters: use `list_filter_presets` and `get_filter_preset` to reuse saved HTTPQL.

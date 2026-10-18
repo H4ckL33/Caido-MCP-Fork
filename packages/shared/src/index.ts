@@ -18,6 +18,7 @@ export type BackendAPI = {
     updateMcpServerConfig: (config: McpConfigInput) => Promise<McpSettings>;
     getToolGroupPermissionModes: () => Promise<ToolPermissions>;
     setToolGroupPermissionMode: (groupId: string, mode: ToolGroupMode) => Promise<ToolPermissions>;
+    setToolPermissionMode: (action: string, mode: ToolGroupMode) => Promise<ToolPermissions>;
     setAllToolGroupPermissionModes: (mode: ToolGroupMode) => Promise<ToolPermissions>;
     resolveToolActionConfirmation: (id: number, confirmed: boolean) => Promise<boolean>;
 };
@@ -34,11 +35,12 @@ export type BackendEvents = {
     ) => void;
 };
 
-export type ToolGroupMode = "auto" | "confirm" | "disabled";
+export type ToolGroupMode = "auto" | "guarded-auto" | "confirm" | "disabled";
 
 export type ToolGroupTool = {
     name: string;
     action: string;
+    defaultMode: ToolGroupMode;
 };
 
 export type ToolGroup = {
@@ -50,10 +52,11 @@ export type ToolGroup = {
 export type ToolPermissions = {
     groups: ToolGroup[];
     states: Record<string, ToolGroupMode>;
+    toolStates: Record<string, ToolGroupMode>;
 };
 
 export const MCP_DEFAULT_HOST = "127.0.0.1";
 export const MCP_DEFAULT_PORT = 3334;
 export const MCP_ENDPOINT_PATH = "/mcp";
 export const MCP_CONTROL_ENDPOINT_PATH = "/control";
-export const MCP_PLUGIN_VERSION = "3.0.2";
+export const MCP_PLUGIN_VERSION = "4.0.0";

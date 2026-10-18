@@ -18,6 +18,17 @@ export enum ToolGroupId {
     ProxyPassthroughSafe = "proxy-passthrough-safe",
     ProxyPassthroughUnsafe = "proxy-passthrough-unsafe",
     ProjectSafe = "project-safe",
+    ProjectUnsafe = "project-unsafe",
+    PolicySafe = "policy-safe",
+    PolicyUnsafe = "policy-unsafe",
+    WorkflowSafe = "workflow-safe",
+    WorkflowUnsafe = "workflow-unsafe",
+    AutomateSafe = "automate-safe",
+    AutomateUnsafe = "automate-unsafe",
+    InterceptSafe = "intercept-safe",
+    InterceptUnsafe = "intercept-unsafe",
+    UpstreamSafe = "upstream-safe",
+    UpstreamUnsafe = "upstream-unsafe",
     ReplaySafe = "replay-safe",
     ReplayUnsafe = "replay-unsafe",
     RequestSafe = "request-safe",
@@ -66,6 +77,37 @@ const BASE_GROUPS: ToolGroupSeed[] = [
         defaultMode: "confirm",
     },
     { id: ToolGroupId.ProjectSafe, label: "Project info", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.ProjectUnsafe, label: "Project changes", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.PolicySafe, label: "Execution policy", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.PolicyUnsafe, label: "Execution grants", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.WorkflowSafe, label: "Workflow reads", tools: [], defaultMode: "auto" },
+    {
+        id: ToolGroupId.WorkflowUnsafe,
+        label: "Workflow changes",
+        tools: [],
+        defaultMode: "confirm",
+    },
+    { id: ToolGroupId.AutomateSafe, label: "Automate reads", tools: [], defaultMode: "auto" },
+    {
+        id: ToolGroupId.AutomateUnsafe,
+        label: "Automate execution",
+        tools: [],
+        defaultMode: "confirm",
+    },
+    { id: ToolGroupId.InterceptSafe, label: "Intercept status", tools: [], defaultMode: "auto" },
+    {
+        id: ToolGroupId.InterceptUnsafe,
+        label: "Intercept changes",
+        tools: [],
+        defaultMode: "confirm",
+    },
+    { id: ToolGroupId.UpstreamSafe, label: "Upstream reads", tools: [], defaultMode: "auto" },
+    {
+        id: ToolGroupId.UpstreamUnsafe,
+        label: "Upstream changes",
+        tools: [],
+        defaultMode: "confirm",
+    },
     { id: ToolGroupId.ReplaySafe, label: "Replay safe", tools: [], defaultMode: "confirm" },
     { id: ToolGroupId.ReplayUnsafe, label: "Replay unsafe", tools: [], defaultMode: "disabled" },
     { id: ToolGroupId.RequestSafe, label: "Request safe", tools: [], defaultMode: "confirm" },
@@ -113,7 +155,16 @@ const LEGACY_GROUP_ID_MIGRATIONS: Record<string, ToolGroupId> = {
 };
 
 const isToolGroupMode = (value: unknown): value is ToolGroupMode =>
-    value === "auto" || value === "confirm" || value === "disabled";
+    value === "auto" || value === "guarded-auto" || value === "confirm" || value === "disabled";
+
+const mergeToolStates = (states: unknown): Record<string, ToolGroupMode> => {
+    if (states === null || typeof states !== "object" || Array.isArray(states)) return {};
+    return Object.fromEntries(
+        Object.entries(states as Record<string, unknown>).filter(
+            (entry): entry is [string, ToolGroupMode] => isToolGroupMode(entry[1]),
+        ),
+    );
+};
 
 const hasValidState = (states: Record<string, unknown>, groupId: string) =>
     isToolGroupMode(states[groupId]);
@@ -150,6 +201,8 @@ export class ToolPermissionsStore {
     private persistQueue: Promise<void> = Promise.resolve();
     private groups: ToolGroup[] = createBaseGroups();
     private states: Record<string, ToolGroupMode> = createDefaultStates();
+    private toolStates: Record<string, ToolGroupMode> = {};
+    private toolDefaults: Record<string, ToolGroupMode> = {};
     private actionToGroup: Record<string, ToolGroupId> = {};
 
     constructor(sdk: MCPSDK) {
@@ -164,6 +217,7 @@ export class ToolPermissionsStore {
             this.groups = createBaseGroups();
             const merged = mergeKnownStates(parsed?.states);
             this.states = merged.states;
+            this.toolStates = mergeToolStates(parsed?.toolStates);
             if (merged.migrated) {
                 await this.save();
             }
@@ -182,10 +236,13 @@ export class ToolPermissionsStore {
             states: Object.fromEntries(
                 Object.entries(this.states).filter(([groupId]) => visibleGroupIds.has(groupId)),
             ),
+            toolStates: { ...this.toolStates },
         };
     }
 
     getModeForAction(action: string): ToolGroupMode {
+        const toolMode = this.toolStates[action] ?? this.toolDefaults[action];
+        if (toolMode !== undefined) return toolMode;
         const groupId = this.actionToGroup[action];
         const group = this.groups.find((g) => g.id === groupId);
         if (!group) return DEFAULT_MODE;
@@ -193,12 +250,14 @@ export class ToolPermissionsStore {
         return this.states[group.id] ?? DEFAULT_MODE;
     }
 
-    registerTool(action: string, groupId: ToolGroupId, name: string) {
+    registerTool(action: string, groupId: ToolGroupId, name: string, defaultMode?: ToolGroupMode) {
         const group = this.groups.find((g) => g.id === groupId);
         if (!group) return;
         this.actionToGroup[action] = groupId;
+        const resolvedDefault = defaultMode ?? this.states[groupId] ?? DEFAULT_MODE;
+        this.toolDefaults[action] = resolvedDefault;
         const existing = group.tools.find((tool) => tool.action === action);
-        const nextTool: ToolGroupTool = { action, name };
+        const nextTool: ToolGroupTool = { action, name, defaultMode: resolvedDefault };
         group.tools = existing
             ? group.tools.map((tool) => (tool.action === action ? nextTool : tool))
             : [...group.tools, nextTool];
@@ -212,6 +271,13 @@ export class ToolPermissionsStore {
             throw new Error(`Invalid tool group mode: ${String(mode)}`);
         }
         this.states = { ...this.states, [groupId]: mode };
+        const group = this.groups.find((candidate) => candidate.id === groupId);
+        if (group !== undefined) {
+            this.toolStates = {
+                ...this.toolStates,
+                ...Object.fromEntries(group.tools.map((tool) => [tool.action, mode])),
+            };
+        }
         await this.save();
         return this.getPermissions();
     }
@@ -225,6 +291,21 @@ export class ToolPermissionsStore {
             nextStates[group.id] = HIDDEN_GROUP_IDS.has(group.id) ? "auto" : mode;
         }
         this.states = nextStates;
+        this.toolStates = Object.fromEntries(
+            this.groups.flatMap((group) => group.tools.map((tool) => [tool.action, mode])),
+        );
+        await this.save();
+        return this.getPermissions();
+    }
+
+    async setToolMode(action: string, mode: ToolGroupMode): Promise<ToolPermissions> {
+        if (this.actionToGroup[action] === undefined) {
+            throw new Error(`Unknown tool action: ${action}`);
+        }
+        if (!isToolGroupMode(mode)) {
+            throw new Error(`Invalid tool mode: ${String(mode)}`);
+        }
+        this.toolStates = { ...this.toolStates, [action]: mode };
         await this.save();
         return this.getPermissions();
     }
@@ -241,6 +322,7 @@ export class ToolPermissionsStore {
         const data: ToolPermissions = {
             groups: this.groups,
             states: this.states,
+            toolStates: this.toolStates,
         };
         await writeFile(this.permissionsPath, JSON.stringify(data, null, 2));
     }

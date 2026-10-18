@@ -378,6 +378,21 @@ export const isToolResult = (value: unknown): value is ToolResult => {
 
 export const formatDetails = ({ params }: ActionPayload) => {
     if (params === undefined || Object.keys(params).length === 0) return "";
-    const safeParams = JSON.stringify(params);
+    const sensitiveKey =
+        /(?:authorization|cookie|credential|password|secret|token|auth[_-]?evidence)/iu;
+    const redact = (value: unknown, key = ""): unknown => {
+        if (sensitiveKey.test(key)) return "[REDACTED]";
+        if (Array.isArray(value)) return value.map((item) => redact(item));
+        if (value !== null && typeof value === "object") {
+            return Object.fromEntries(
+                Object.entries(value).map(([childKey, childValue]) => [
+                    childKey,
+                    redact(childValue, childKey),
+                ]),
+            );
+        }
+        return value;
+    };
+    const safeParams = JSON.stringify(redact(params));
     return `Params:\n${safeParams}`;
 };

@@ -22,6 +22,7 @@ import type {
     HttpSerializationOptions,
     ProjectedHttpSerializationOptionsInput,
 } from "../history";
+import type { EgressRequest } from "../operation-policy";
 import { ToolGroupId } from "../tool-permissions";
 
 import { httpSerializationSchema, listHttpSerializationSchema } from "./http-serialization-schema";
@@ -194,6 +195,16 @@ const sendRawRequestsSchema = z
     })
     .strict();
 
+const guardedSendRequestsSchema = sendRequestsSchema.extend({
+    grant_id: z.string().min(3).max(128),
+    operation_id: z.string().min(3).max(128),
+});
+
+const guardedSendRawRequestsSchema = sendRawRequestsSchema.extend({
+    grant_id: z.string().min(3).max(128),
+    operation_id: z.string().min(3).max(128),
+});
+
 const scopeCheckSchema = z
     .object({
         items: z
@@ -313,7 +324,44 @@ const summarizeRequests = async (sdk: ToolContext["sdk"], input: z.infer<typeof 
     return page.items.map((item) => ({ request: item.request, response: item.response }));
 };
 
-export const registerRequestTools = ({ server, sdk, store, permissions }: ToolContext) => {
+const requireCurrentProjectId = async (sdk: ToolContext["sdk"]) => {
+    const project = await sdk.projects.getCurrent();
+    if (project === undefined) throw new Error("No Caido project is selected");
+    return String(project.getId());
+};
+
+const savedRequestPlan = (
+    request: NonNullable<Awaited<ReturnType<ToolContext["sdk"]["requests"]["get"]>>>["request"],
+): EgressRequest => ({
+    host: request.getHost(),
+    port: request.getPort(),
+    tls: request.getTls(),
+    method: request.getMethod(),
+    path: request.getPath(),
+    raw: request.getRaw().toBytes(),
+});
+
+const rawRequestPlan = (item: z.infer<typeof sendRawRequestItemSchema>): EgressRequest => {
+    const isTls = item.is_tls ?? item.port === 443;
+    const raw = Buffer.from(item.raw_base64, "base64");
+    const spec = new RequestSpecRaw(`${isTls ? "https" : "http"}://${item.host}:${item.port}`);
+    spec.setHost(item.host);
+    spec.setPort(item.port);
+    spec.setTls(isTls);
+    spec.setRaw(raw);
+    const parsed = spec.toSpec();
+    return {
+        host: item.host,
+        authorityHost: parsed.getHost(),
+        port: item.port,
+        tls: isTls,
+        method: parsed.getMethod(),
+        path: parsed.getPath(),
+        raw,
+    };
+};
+
+export const registerRequestTools = ({ server, sdk, store, permissions, policy }: ToolContext) => {
     registerToolAction(server, sdk, store, permissions, {
         action: "sdk.requests.list",
         group: ToolGroupId.RequestSafe,
@@ -436,6 +484,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions }: ToolCo
         description:
             "Send saved requests by ID. " + 'Example: { "ids": [1], "options": { "save": true } }.',
         inputSchema: sendRequestsSchema,
+        defaultMode: "disabled",
         handler: async (params) => {
             const input = sendRequestsSchema.parse(params);
             const includeBody = input.serialization?.include_body !== false;
@@ -488,6 +537,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions }: ToolCo
             "Returns the live response. The request is not added to Proxy history unless options.save is true. " +
             'Example: { "items": [{ "raw_base64": "<base64>", "host": "example.com", "port": 443, "is_tls": true }], "options": { "save": true } }.',
         inputSchema: sendRawRequestsSchema,
+        defaultMode: "disabled",
         handler: async (params) => {
             const input = sendRawRequestsSchema.parse(params);
             const includeBody = input.serialization?.include_body !== false;
@@ -523,6 +573,152 @@ export const registerRequestTools = ({ server, sdk, store, permissions }: ToolCo
                         index,
                         error: error instanceof Error ? error.message : String(error),
                     });
+                }
+            }
+            return { content: [{ type: "text", text: stringifyResult({ results }) }] };
+        },
+    });
+
+    registerToolAction(server, sdk, store, permissions, {
+        action: "sdk.requests.sendGuarded",
+        group: ToolGroupId.RequestUnsafe,
+        toolName: "execute_guarded_requests",
+        description:
+            "Send saved requests under a confirmed execution grant. operation_id is single-use; quota is reserved before egress and transport failures remain delivery-ambiguous 0..1 without retry.",
+        inputSchema: guardedSendRequestsSchema,
+        defaultMode: "guarded-auto",
+        readOnly: false,
+        annotations: { openWorldHint: true, destructiveHint: true, idempotentHint: false },
+        safetyCheck: async (params) => {
+            const input = guardedSendRequestsSchema.parse(params);
+            const projectId = await requireCurrentProjectId(sdk);
+            const plans: EgressRequest[] = [];
+            for (const id of input.ids) {
+                const pair = await sdk.requests.get(toId(id));
+                if (pair?.request === undefined) throw new Error(`Request not found: ${id}`);
+                plans.push(savedRequestPlan(pair.request));
+            }
+            policy.validatePlan(input.grant_id, projectId, plans);
+        },
+        handler: async (params) => {
+            const input = guardedSendRequestsSchema.parse(params);
+            const projectId = await requireCurrentProjectId(sdk);
+            const pairs = [];
+            const plans: EgressRequest[] = [];
+            for (const id of input.ids) {
+                const pair = await sdk.requests.get(toId(id));
+                if (pair?.request === undefined) throw new Error(`Request not found: ${id}`);
+                pairs.push({ id, pair });
+                plans.push(savedRequestPlan(pair.request));
+            }
+            const receipts = await policy.beginOperation(
+                input.operation_id,
+                input.grant_id,
+                projectId,
+                plans,
+            );
+            const results = [];
+            for (let index = 0; index < pairs.length; index += 1) {
+                const item = pairs[index];
+                const plan = plans[index];
+                const receipt = receipts[index];
+                if (item === undefined || plan === undefined || receipt === undefined) continue;
+                try {
+                    policy.revalidateRequest(input.grant_id, projectId, plan);
+                    await policy.markArmed(receipt.id);
+                    const sent = await sdk.requests.send(
+                        item.pair.request.toSpec(),
+                        input.options ?? {},
+                    );
+                    await policy.markResponse(
+                        receipt.id,
+                        String(sent.request.getId()),
+                        sent.response !== undefined,
+                    );
+                    const terminal = await policy.markTerminal(receipt.id);
+                    results.push({ ok: true, id: item.id, receipt: terminal });
+                } catch (error) {
+                    const failed = await policy.markFailure(receipt.id, error);
+                    results.push({ ok: false, id: item.id, receipt: failed });
+                    for (let pending = index + 1; pending < receipts.length; pending += 1) {
+                        const pendingReceipt = receipts[pending];
+                        const pendingItem = pairs[pending];
+                        if (pendingReceipt === undefined || pendingItem === undefined) continue;
+                        const terminal = await policy.markFailure(
+                            pendingReceipt.id,
+                            new Error("not executed after a prior batch failure"),
+                        );
+                        results.push({ ok: false, id: pendingItem.id, receipt: terminal });
+                    }
+                    break;
+                }
+            }
+            return { content: [{ type: "text", text: stringifyResult({ results }) }] };
+        },
+    });
+
+    registerToolAction(server, sdk, store, permissions, {
+        action: "sdk.requests.sendRawGuarded",
+        group: ToolGroupId.RequestUnsafe,
+        toolName: "execute_guarded_raw_requests",
+        description:
+            "Send crafted raw HTTP requests under a confirmed execution grant. Raw bytes must be fully inspectable and satisfy outbound-content policy.",
+        inputSchema: guardedSendRawRequestsSchema,
+        defaultMode: "guarded-auto",
+        readOnly: false,
+        annotations: { openWorldHint: true, destructiveHint: true, idempotentHint: false },
+        safetyCheck: async (params) => {
+            const input = guardedSendRawRequestsSchema.parse(params);
+            const projectId = await requireCurrentProjectId(sdk);
+            policy.validatePlan(input.grant_id, projectId, input.items.map(rawRequestPlan));
+        },
+        handler: async (params) => {
+            const input = guardedSendRawRequestsSchema.parse(params);
+            const projectId = await requireCurrentProjectId(sdk);
+            const plans = input.items.map(rawRequestPlan);
+            const receipts = await policy.beginOperation(
+                input.operation_id,
+                input.grant_id,
+                projectId,
+                plans,
+            );
+            const results = [];
+            for (let index = 0; index < input.items.length; index += 1) {
+                const item = input.items[index];
+                const plan = plans[index];
+                const receipt = receipts[index];
+                if (item === undefined || plan === undefined || receipt === undefined) continue;
+                try {
+                    policy.revalidateRequest(input.grant_id, projectId, plan);
+                    const spec = new RequestSpecRaw(
+                        `${plan.tls ? "https" : "http"}://${plan.host}:${plan.port}`,
+                    );
+                    spec.setHost(plan.host);
+                    spec.setPort(plan.port);
+                    spec.setTls(plan.tls);
+                    spec.setRaw(plan.raw);
+                    await policy.markArmed(receipt.id);
+                    const sent = await sdk.requests.send(spec, input.options ?? {});
+                    await policy.markResponse(
+                        receipt.id,
+                        String(sent.request.getId()),
+                        sent.response !== undefined,
+                    );
+                    const terminal = await policy.markTerminal(receipt.id);
+                    results.push({ ok: true, index, receipt: terminal });
+                } catch (error) {
+                    const failed = await policy.markFailure(receipt.id, error);
+                    results.push({ ok: false, index, receipt: failed });
+                    for (let pending = index + 1; pending < receipts.length; pending += 1) {
+                        const pendingReceipt = receipts[pending];
+                        if (pendingReceipt === undefined) continue;
+                        const terminal = await policy.markFailure(
+                            pendingReceipt.id,
+                            new Error("not executed after a prior batch failure"),
+                        );
+                        results.push({ ok: false, index: pending, receipt: terminal });
+                    }
+                    break;
                 }
             }
             return { content: [{ type: "text", text: stringifyResult({ results }) }] };

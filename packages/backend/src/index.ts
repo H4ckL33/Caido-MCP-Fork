@@ -1,4 +1,5 @@
 import { McpHttpServer } from "./mcp";
+import type { ToolGroupMode } from "shared";
 import type { MCPSDK } from "./types/sdk";
 export type { API } from "./types/api";
 export type { BackendEvents } from "./types/events";
@@ -25,13 +26,19 @@ export function init(sdk: MCPSDK) {
     });
     sdk.api.register(
         "setToolGroupPermissionMode",
-        async (_sdk: MCPSDK, groupId: string, mode: "auto" | "confirm" | "disabled") => {
+        async (_sdk: MCPSDK, groupId: string, mode: ToolGroupMode) => {
             return await mcp.setToolGroupPermissionMode(groupId, mode);
         },
     );
     sdk.api.register(
+        "setToolPermissionMode",
+        async (_sdk: MCPSDK, action: string, mode: ToolGroupMode) => {
+            return await mcp.setToolPermissionMode(action, mode);
+        },
+    );
+    sdk.api.register(
         "setAllToolGroupPermissionModes",
-        async (_sdk: MCPSDK, mode: "auto" | "confirm" | "disabled") => {
+        async (_sdk: MCPSDK, mode: ToolGroupMode) => {
             return await mcp.setAllToolGroupPermissionModes(mode);
         },
     );

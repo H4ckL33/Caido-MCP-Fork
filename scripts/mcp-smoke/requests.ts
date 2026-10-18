@@ -227,7 +227,6 @@ export const runRequests = async (tools: Set<string>) => {
         });
     });
 
-    await runIfTool("send_requests", async () => {
-        await callTool("send_requests", { ids: [requestIdNum], options: { save: true } });
-    });
+    assert(tools.has("execute_guarded_requests"), "execute_guarded_requests missing");
+    assert(tools.has("execute_guarded_raw_requests"), "execute_guarded_raw_requests missing");
 };
