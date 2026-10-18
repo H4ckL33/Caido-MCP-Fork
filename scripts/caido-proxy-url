@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+gateway="$(ip route show default | awk '/default via/ { print $3; exit }')"
+if [ -z "$gateway" ]; then
+    echo "Unable to resolve the Windows host gateway." >&2
+    exit 1
+fi
+
+printf 'http://%s:8080\n' "$gateway"
