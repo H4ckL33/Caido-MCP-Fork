@@ -110,7 +110,7 @@ const BASE_GROUPS: ToolGroupSeed[] = [
     },
     { id: ToolGroupId.ReplaySafe, label: "Replay safe", tools: [], defaultMode: "confirm" },
     { id: ToolGroupId.ReplayUnsafe, label: "Replay unsafe", tools: [], defaultMode: "disabled" },
-    { id: ToolGroupId.RequestSafe, label: "Request safe", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.RequestSafe, label: "Request safe", tools: [], defaultMode: "auto" },
     { id: ToolGroupId.RequestUnsafe, label: "Request unsafe", tools: [], defaultMode: "disabled" },
     { id: ToolGroupId.RuntimeSafe, label: "Runtime info", tools: [], defaultMode: "auto" },
     { id: ToolGroupId.SitemapSafe, label: "Sitemap", tools: [], defaultMode: "auto" },
@@ -128,10 +128,11 @@ const BASE_GROUPS: ToolGroupSeed[] = [
         tools: [],
         defaultMode: "disabled",
     },
-    { id: ToolGroupId.WsSafe, label: "WS History", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.WsSafe, label: "WS History", tools: [], defaultMode: "auto" },
 ];
 
 const DEFAULT_MODE: ToolGroupMode = "disabled";
+const PERMISSION_PROFILE_VERSION = 1;
 const HIDDEN_GROUP_IDS = new Set<string>([]);
 
 const createBaseGroups = (): ToolGroup[] =>
@@ -204,6 +205,7 @@ export class ToolPermissionsStore {
     private toolStates: Record<string, ToolGroupMode> = {};
     private toolDefaults: Record<string, ToolGroupMode> = {};
     private actionToGroup: Record<string, ToolGroupId> = {};
+    private permissionProfileVersion = PERMISSION_PROFILE_VERSION;
 
     constructor(sdk: MCPSDK) {
         this.sdk = sdk;
@@ -213,12 +215,24 @@ export class ToolPermissionsStore {
     async load(): Promise<void> {
         try {
             const raw = await readFile(this.permissionsPath, { encoding: "utf8" });
-            const parsed = JSON.parse(String(raw)) as ToolPermissions;
+            const parsed = JSON.parse(String(raw)) as ToolPermissions & {
+                permissionProfileVersion?: number;
+            };
             this.groups = createBaseGroups();
             const merged = mergeKnownStates(parsed?.states);
             this.states = merged.states;
             this.toolStates = mergeToolStates(parsed?.toolStates);
-            if (merged.migrated) {
+            this.permissionProfileVersion = Number(parsed.permissionProfileVersion ?? 0);
+            const profileMigrated = this.permissionProfileVersion < PERMISSION_PROFILE_VERSION;
+            if (profileMigrated) {
+                this.states = {
+                    ...this.states,
+                    [ToolGroupId.RequestSafe]: "auto",
+                    [ToolGroupId.WsSafe]: "auto",
+                };
+                this.permissionProfileVersion = PERMISSION_PROFILE_VERSION;
+            }
+            if (merged.migrated || profileMigrated) {
                 await this.save();
             }
         } catch (err) {
@@ -319,7 +333,8 @@ export class ToolPermissionsStore {
 
     private async saveInternal(): Promise<void> {
         await mkdir(this.sdk.meta.path(), { recursive: true });
-        const data: ToolPermissions = {
+        const data: ToolPermissions & { permissionProfileVersion: number } = {
+            permissionProfileVersion: this.permissionProfileVersion,
             groups: this.groups,
             states: this.states,
             toolStates: this.toolStates,

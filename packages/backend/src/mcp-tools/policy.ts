@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ToolGroupId } from "../tool-permissions";
+import { assertScopeBinding, getEffectiveScope } from "../scope-binding";
 
 import { registerToolAction, type ToolContext } from "./register";
 import { stringifyResult } from "./shared";
@@ -24,6 +25,8 @@ const installGrantSchema = z
         project_id: projectIdSchema,
         authorization_id: z.string().min(1).max(256),
         scope_digest: z.string().min(1).max(256),
+        caido_scope_id: z.string().min(1).max(128),
+        caido_scope_digest: z.string().regex(/^sha256:[a-f0-9]{64}$/u),
         targets: z.array(targetSchema).min(1),
         methods: z.array(z.string().min(1).max(32)).min(1),
         expires_at: z.string().datetime({ offset: true }),
@@ -32,6 +35,62 @@ const installGrantSchema = z
     .strict();
 
 export const registerPolicyTools = ({ server, sdk, store, permissions, policy }: ToolContext) => {
+    registerToolAction(server, sdk, store, permissions, {
+        action: "policy.guard.readiness",
+        group: ToolGroupId.PolicySafe,
+        toolName: "get_guard_readiness",
+        description:
+            "Report the selected project, effective Caido scope binding and active guarded-HTTP readiness without implying proxy-wide coverage.",
+        inputSchema: z
+            .object({ caido_scope_id: z.string().min(1).max(128).optional() })
+            .strict(),
+        defaultMode: "auto",
+        handler: async (params) => {
+            const input = z
+                .object({ caido_scope_id: z.string().min(1).max(128).optional() })
+                .strict()
+                .parse(params);
+            const current = await sdk.projects.getCurrent();
+            const projectId = current === undefined ? null : String(current.getId());
+            const scope =
+                input.caido_scope_id === undefined
+                    ? null
+                    : await getEffectiveScope(sdk, input.caido_scope_id);
+            const grants = policy.listGrants().filter((grant) => grant.revokedAt === undefined);
+            const matchingGrants = grants.filter(
+                (grant) =>
+                    grant.projectId === projectId &&
+                    (scope === null ||
+                        (grant.caidoScopeId === scope.id && grant.caidoScopeDigest === scope.digest)),
+            );
+            const now = Date.now();
+            const activeGrants = matchingGrants.filter(
+                (grant) => Date.parse(grant.expiresAt) > now && grant.usedRequests < grant.maxRequests,
+            );
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: stringifyResult({
+                            selected_project_id: projectId,
+                            selected_project_name: current?.getName() ?? null,
+                            caido_scope: scope,
+                            active_grants: activeGrants.map((grant) => ({
+                                id: grant.id,
+                                expires_at: grant.expiresAt,
+                                remaining_requests: grant.maxRequests - grant.usedRequests,
+                            })),
+                            guarded_http_ready: projectId !== null && scope !== null && activeGrants.length > 0,
+                            browser_proxy_ready: false,
+                            proxy_wide_http_guard: false,
+                            websocket_active_guard: false,
+                        }),
+                    },
+                ],
+            };
+        },
+    });
+
     registerToolAction(server, sdk, store, permissions, {
         action: "policy.capabilities.get",
         group: ToolGroupId.PolicySafe,
@@ -90,11 +149,14 @@ export const registerPolicyTools = ({ server, sdk, store, permissions, policy }:
             if (String(current.getId()) !== input.project_id) {
                 throw new Error("Selected Caido project does not match project_id");
             }
-            const grant = await policy.installGrant({
+            const scope = await getEffectiveScope(sdk, input.caido_scope_id);
+            const candidate = {
                 id: input.id,
                 projectId: input.project_id,
                 authorizationId: input.authorization_id,
                 scopeDigest: input.scope_digest,
+                caidoScopeId: input.caido_scope_id,
+                caidoScopeDigest: input.caido_scope_digest,
                 targets: input.targets.map((target) => ({
                     host: target.host,
                     includeSubdomains: target.include_subdomains,
@@ -105,7 +167,9 @@ export const registerPolicyTools = ({ server, sdk, store, permissions, policy }:
                 methods: input.methods,
                 expiresAt: input.expires_at,
                 maxRequests: input.max_requests,
-            });
+            };
+            assertScopeBinding(scope, candidate);
+            const grant = await policy.installGrant(candidate);
             return { content: [{ type: "text", text: stringifyResult({ grant }) }] };
         },
     });

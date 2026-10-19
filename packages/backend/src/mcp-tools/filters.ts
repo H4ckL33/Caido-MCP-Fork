@@ -66,6 +66,7 @@ export const registerFilterTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.filters.list",
         group: ToolGroupId.FilterSafe,
         toolName: "list_filter_presets",
+        defaultMode: "auto",
         description: "List saved HTTPQL filters.",
         inputSchema: listFilterPresetsSchema,
         handler: async () => {
@@ -93,6 +94,7 @@ export const registerFilterTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.filters.get",
         group: ToolGroupId.FilterSafe,
         toolName: "get_filter_preset",
+        defaultMode: "auto",
         description: "Get saved filters by ID.",
         inputSchema: getFilterPresetSchema,
         handler: async (params) => {

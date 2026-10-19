@@ -12,19 +12,17 @@ const idSchema = z.preprocess(
 );
 
 type AutomateResponse = {
-    data?: {
-        automateSession?: {
-            settings?: {
-                concurrency?: { workers?: number };
-                retryOnFailure?: { maximumRetries?: number };
-                redirect?: { max?: number };
-                payloads?: Array<{ options?: { __typename?: string }; preprocessors?: unknown[] }>;
-            };
-        } | null;
-    };
+    automateSession?: {
+        settings?: {
+            concurrency?: { workers?: number };
+            retryOnFailure?: { maximumRetries?: number };
+            redirect?: { max?: number };
+            payloads?: Array<{ options?: { __typename?: string }; preprocessors?: unknown[] }>;
+        };
+    } | null;
 };
 
-const assessSession = (response: AutomateResponse) => {
+const assessSession = (response: { data?: AutomateResponse }) => {
     const session = response.data?.automateSession;
     if (session === undefined || session === null)
         return { admitted: false, reasons: ["not-found"] };

@@ -24,6 +24,7 @@ import type {
 } from "../history";
 import type { EgressRequest } from "../operation-policy";
 import { ToolGroupId } from "../tool-permissions";
+import { assertLiveGrantScope } from "../scope-binding";
 
 import { httpSerializationSchema, listHttpSerializationSchema } from "./http-serialization-schema";
 import { registerToolAction, type ToolContext } from "./register";
@@ -598,6 +599,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions, policy }
                 if (pair?.request === undefined) throw new Error(`Request not found: ${id}`);
                 plans.push(savedRequestPlan(pair.request));
             }
+            await assertLiveGrantScope(sdk, policy, input.grant_id, projectId);
             policy.validatePlan(input.grant_id, projectId, plans);
         },
         handler: async (params) => {
@@ -624,6 +626,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions, policy }
                 const receipt = receipts[index];
                 if (item === undefined || plan === undefined || receipt === undefined) continue;
                 try {
+                    await assertLiveGrantScope(sdk, policy, input.grant_id, projectId);
                     policy.revalidateRequest(input.grant_id, projectId, plan);
                     await policy.markArmed(receipt.id);
                     const sent = await sdk.requests.send(
@@ -670,6 +673,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions, policy }
         safetyCheck: async (params) => {
             const input = guardedSendRawRequestsSchema.parse(params);
             const projectId = await requireCurrentProjectId(sdk);
+            await assertLiveGrantScope(sdk, policy, input.grant_id, projectId);
             policy.validatePlan(input.grant_id, projectId, input.items.map(rawRequestPlan));
         },
         handler: async (params) => {
@@ -689,6 +693,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions, policy }
                 const receipt = receipts[index];
                 if (item === undefined || plan === undefined || receipt === undefined) continue;
                 try {
+                    await assertLiveGrantScope(sdk, policy, input.grant_id, projectId);
                     policy.revalidateRequest(input.grant_id, projectId, plan);
                     const spec = new RequestSpecRaw(
                         `${plan.tls ? "https" : "http"}://${plan.host}:${plan.port}`,

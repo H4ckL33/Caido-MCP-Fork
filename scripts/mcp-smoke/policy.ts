@@ -4,6 +4,7 @@ export const runPolicy = async (tools: Set<string>) => {
     const { callTool } = makeToolCaller(tools);
     for (const name of [
         "get_agent_safe_capabilities",
+        "get_guard_readiness",
         "list_execution_grants",
         "list_egress_receipts",
     ]) {

@@ -757,6 +757,7 @@ export const registerReplayTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.replay.listCollectionsGql",
         group: ToolGroupId.ReplaySafe,
         toolName: "query_replay_collections",
+        defaultMode: "auto",
         description: "List Replay collections with cursor pagination.",
         inputSchema: paginationSchema,
         handler: async (params) => {
@@ -774,6 +775,7 @@ export const registerReplayTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.replay.listCollectionsDetailed",
         group: ToolGroupId.ReplaySafe,
         toolName: "list_replay_collections_detailed",
+        defaultMode: "auto",
         description:
             "List Replay collections with nested sessions and entries. " +
             'Example: { "first": 5, "include_request": true }. ' +
@@ -865,6 +867,7 @@ export const registerReplayTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.replay.listSessions",
         group: ToolGroupId.ReplaySafe,
         toolName: "query_replay_sessions",
+        defaultMode: "auto",
         description: "List Replay sessions with cursor pagination.",
         inputSchema: paginationSchema,
         handler: async (params) => {
@@ -882,6 +885,7 @@ export const registerReplayTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.replay.getSession",
         group: ToolGroupId.ReplaySafe,
         toolName: "get_replay_session",
+        defaultMode: "auto",
         description: "Get Replay sessions by ID.",
         inputSchema: replayGetSessionSchema,
         handler: async (params) => {
@@ -916,6 +920,7 @@ export const registerReplayTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.replay.getEntry",
         group: ToolGroupId.ReplaySafe,
         toolName: "get_replay_entry",
+        defaultMode: "auto",
         description:
             "Get Replay entries by ID. " +
             'Example: { "entry_ids": [1], "session_kind": "http", "include_request": true }. ' +

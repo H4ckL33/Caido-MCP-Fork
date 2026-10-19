@@ -11,7 +11,7 @@ A hardened local fork of [Vibe Hacking](https://github.com/vvvvvvvvvvel/VibeHack
 - **Fail-closed defaults**: unknown, traffic-producing, environment, and tamper operations start disabled.
 - **Bounded confirmation**: unanswered confirmations expire after 15 seconds and cannot be executed later.
 - **Credential summaries**: cookie and authentication-header values are redacted instead of previewed.
-- **Execution grants**: active MCP HTTP sends bind project, authorization reference, scope digest, targets, methods, expiry, and request budget.
+- **Execution grants**: active MCP HTTP sends bind the selected project, authorization reference, effective Caido scope ID and digest, targets, methods, expiry, and request budget. The live scope binding is revalidated before each guarded send.
 - **Delivery receipts**: operation IDs are single-use and post-egress failures remain explicit `ambiguous-0..1` outcomes without automatic retry.
 - **Declared boundaries**: proxy-wide HTTP, active WebSocket, Automate start, and active workflow runs are reported unsupported until they can be inspected at the final send point.
 - **Side-by-side testing**: the fork uses its own plugin ID and port `3334`, so it can be validated before replacing the upstream plugin.
@@ -140,6 +140,7 @@ Policy and lifecycle:
 
 - `get_agent_safe_capabilities`
 - `install_execution_grant` / `revoke_execution_grant`
+- `get_guard_readiness` (selected project, effective scope digest, active grants, and distinct guarded-HTTP/browser/proxy-wide readiness)
 - `list_execution_grants` / `list_egress_receipts`
 - project and scope lifecycle
 - workflow read/review/convert operations

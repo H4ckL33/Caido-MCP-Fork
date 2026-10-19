@@ -30,6 +30,7 @@ export const registerHostedFileTools = ({ server, sdk, store, permissions }: Too
         action: "sdk.hostedFile.getAll",
         group: ToolGroupId.HostedFileSafe,
         toolName: "get_hosted_file",
+        defaultMode: "auto",
         description: "List files from the Files section.",
         inputSchema: hostedFileGetAllSchema,
         handler: async () => {

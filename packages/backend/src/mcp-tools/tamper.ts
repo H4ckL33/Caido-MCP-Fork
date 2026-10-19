@@ -304,6 +304,7 @@ export const registerTamperTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.tamper.listCollections",
         group: ToolGroupId.TamperSafe,
         toolName: "list_tamper_rule_collections",
+        defaultMode: "auto",
         description: "List Tamper rule collections with their rules.",
         inputSchema: emptySchema,
         handler: async () => {
@@ -325,6 +326,7 @@ export const registerTamperTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.tamper.getCollection",
         group: ToolGroupId.TamperSafe,
         toolName: "get_tamper_rule_collection",
+        defaultMode: "auto",
         description: "Get Tamper rule collections by ID.",
         inputSchema: getCollectionSchema,
         handler: async (params) => {
@@ -347,6 +349,7 @@ export const registerTamperTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.tamper.getRule",
         group: ToolGroupId.TamperSafe,
         toolName: "get_tamper_rule",
+        defaultMode: "auto",
         description: "Get Tamper rules by ID.",
         inputSchema: getRuleSchema,
         handler: async (params) => {
@@ -641,6 +644,7 @@ export const registerTamperTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.tamper.test",
         group: ToolGroupId.TamperSafe,
         toolName: "test_tamper_rule",
+        defaultMode: "auto",
         description:
             "Test a Tamper rule against raw HTTP. " +
             'Example: { "raw_base64": "...", "target": "request", "part": "header", "operation": "add", ' +
@@ -662,6 +666,7 @@ export const registerTamperTools = ({ server, sdk, store, permissions }: ToolCon
         action: "sdk.tamper.export",
         group: ToolGroupId.TamperSafe,
         toolName: "export_tamper",
+        defaultMode: "auto",
         description: "Export Tamper configuration. Provide collections or rules (IDs).",
         inputSchema: z
             .object({

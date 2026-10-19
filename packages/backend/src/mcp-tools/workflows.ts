@@ -67,7 +67,7 @@ const assertWorkflowDefinitionAdmitted = (definition: unknown) => {
 };
 
 type WorkflowResponse = {
-    data?: { workflow?: { kind?: string; definition?: unknown } | null };
+    workflow?: { kind?: string; definition?: unknown } | null;
 };
 
 export const registerWorkflowTools = ({ server, sdk, store, permissions }: ToolContext) => {

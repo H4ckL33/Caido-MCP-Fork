@@ -16,6 +16,8 @@ export type ExecutionGrant = {
     projectId: string;
     authorizationId: string;
     scopeDigest: string;
+    caidoScopeId: string;
+    caidoScopeDigest: string;
     targets: GrantTarget[];
     methods: string[];
     expiresAt: string;
@@ -131,6 +133,10 @@ export class OperationPolicyStore {
         return this.data.receipts.slice(-Math.max(1, Math.min(limit, 500))).reverse();
     }
 
+    getGrantForExecution(id: string, projectId: string) {
+        return this.getActiveGrant(id, projectId);
+    }
+
     async installGrant(input: InstallGrantInput) {
         this.validateGrantInput(input);
         if (this.data.grants.some((grant) => grant.id === input.id)) {
@@ -240,8 +246,15 @@ export class OperationPolicyStore {
     private validateGrantInput(input: InstallGrantInput) {
         if (!ID_PATTERN.test(input.id)) throw new Error("Invalid grant id");
         if (!PROJECT_ID_PATTERN.test(input.projectId)) throw new Error("Invalid project id");
-        if (input.authorizationId.trim() === "" || input.scopeDigest.trim() === "") {
-            throw new Error("authorizationId and scopeDigest are required");
+        if (
+            input.authorizationId.trim() === "" ||
+            input.scopeDigest.trim() === "" ||
+            input.caidoScopeId.trim() === "" ||
+            input.caidoScopeDigest.trim() === ""
+        ) {
+            throw new Error(
+                "authorizationId, scopeDigest, caidoScopeId and caidoScopeDigest are required",
+            );
         }
         if (input.targets.length === 0) throw new Error("At least one target is required");
         if (input.methods.length === 0) throw new Error("At least one HTTP method is required");
@@ -266,6 +279,9 @@ export class OperationPolicyStore {
         if (Date.parse(grant.expiresAt) <= Date.now())
             throw new Error(`Execution grant expired: ${id}`);
         if (grant.projectId !== projectId) throw new Error("Execution grant project mismatch");
+        if (grant.caidoScopeId === undefined || grant.caidoScopeDigest === undefined) {
+            throw new Error("Legacy execution grant has no effective Caido scope binding");
+        }
         return grant;
     }
 

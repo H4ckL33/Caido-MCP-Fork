@@ -26,6 +26,8 @@ const createStore = async () => {
         projectId: "project:1",
         authorizationId: "auth-1",
         scopeDigest: "sha256:test",
+        caidoScopeId: "scope:1",
+        caidoScopeDigest: `sha256:${"a".repeat(64)}`,
         targets: [
             {
                 host: "example.test",

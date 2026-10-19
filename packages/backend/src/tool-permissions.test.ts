@@ -42,3 +42,13 @@ test("changing a group deliberately propagates to its tools", async (t) => {
     assert.equal(store.getModeForAction("request.legacy"), "confirm");
     assert.equal(store.getModeForAction("request.guarded"), "confirm");
 });
+
+test("history-only request and websocket groups default to auto", async (t) => {
+    const { directory, store } = await makeStore();
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    store.registerTool("request.read", ToolGroupId.RequestSafe, "request read");
+    store.registerTool("websocket.read", ToolGroupId.WsSafe, "websocket read");
+
+    assert.equal(store.getModeForAction("request.read"), "auto");
+    assert.equal(store.getModeForAction("websocket.read"), "auto");
+});

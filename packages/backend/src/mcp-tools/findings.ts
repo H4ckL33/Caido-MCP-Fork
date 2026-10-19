@@ -285,6 +285,7 @@ export const registerFindingsTools = ({ server, sdk, store, permissions }: ToolC
         action: "sdk.findings.list",
         group: ToolGroupId.FindingSafe,
         toolName: "list_findings",
+        defaultMode: "auto",
         description:
             "List findings with native cursor pagination, reporter filter, order, optional HTTP request/response serialization, and fields/exclude_fields projection. " +
             'Example: { "limit": 50, "filter": { "reporter": "mcp" }, "fields": ["cursor", "id", "title", "reporter", "request_id"] }.',
@@ -352,6 +353,7 @@ export const registerFindingsTools = ({ server, sdk, store, permissions }: ToolC
         action: "sdk.findings.get",
         group: ToolGroupId.FindingSafe,
         toolName: "get_finding",
+        defaultMode: "auto",
         description:
             "Get findings by ids, request_ids, or dedupe_keys; provide exactly one lookup mode.",
         inputSchema: findingGetSchema,
@@ -445,6 +447,7 @@ export const registerFindingsTools = ({ server, sdk, store, permissions }: ToolC
         action: "sdk.findings.exists",
         group: ToolGroupId.FindingSafe,
         toolName: "finding_exists",
+        defaultMode: "auto",
         description:
             "Check finding existence by request_ids or dedupe_keys; provide exactly one lookup mode.",
         inputSchema: findingExistsSchema,
