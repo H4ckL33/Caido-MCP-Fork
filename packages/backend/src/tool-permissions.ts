@@ -53,16 +53,16 @@ const BASE_GROUPS: ToolGroupSeed[] = [
     },
     { id: ToolGroupId.EnvSafe, label: "Env safe", tools: [], defaultMode: "disabled" },
     { id: ToolGroupId.EnvUnsafe, label: "Env unsafe", tools: [], defaultMode: "disabled" },
-    { id: ToolGroupId.FilterSafe, label: "Filter safe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.FilterUnsafe, label: "Filter unsafe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.FindingSafe, label: "Finding safe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.FindingUnsafe, label: "Finding unsafe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.HostedFileSafe, label: "HostedFile safe", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.FilterSafe, label: "Filter safe", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.FilterUnsafe, label: "Filter unsafe", tools: [], defaultMode: "disabled" },
+    { id: ToolGroupId.FindingSafe, label: "Finding safe", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.FindingUnsafe, label: "Finding unsafe", tools: [], defaultMode: "disabled" },
+    { id: ToolGroupId.HostedFileSafe, label: "HostedFile safe", tools: [], defaultMode: "auto" },
     {
         id: ToolGroupId.HostedFileUnsafe,
         label: "HostedFile unsafe",
         tools: [],
-        defaultMode: "confirm",
+        defaultMode: "disabled",
     },
     {
         id: ToolGroupId.ProxyPassthroughSafe,
@@ -74,48 +74,48 @@ const BASE_GROUPS: ToolGroupSeed[] = [
         id: ToolGroupId.ProxyPassthroughUnsafe,
         label: "Proxy passthrough unsafe",
         tools: [],
-        defaultMode: "confirm",
+        defaultMode: "disabled",
     },
     { id: ToolGroupId.ProjectSafe, label: "Project info", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.ProjectUnsafe, label: "Project changes", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.ProjectUnsafe, label: "Project changes", tools: [], defaultMode: "auto" },
     { id: ToolGroupId.PolicySafe, label: "Execution policy", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.PolicyUnsafe, label: "Execution grants", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.PolicyUnsafe, label: "Execution grants", tools: [], defaultMode: "disabled" },
     { id: ToolGroupId.WorkflowSafe, label: "Workflow reads", tools: [], defaultMode: "auto" },
     {
         id: ToolGroupId.WorkflowUnsafe,
         label: "Workflow changes",
         tools: [],
-        defaultMode: "confirm",
+        defaultMode: "auto",
     },
     { id: ToolGroupId.AutomateSafe, label: "Automate reads", tools: [], defaultMode: "auto" },
     {
         id: ToolGroupId.AutomateUnsafe,
         label: "Automate execution",
         tools: [],
-        defaultMode: "confirm",
+        defaultMode: "auto",
     },
     { id: ToolGroupId.InterceptSafe, label: "Intercept status", tools: [], defaultMode: "auto" },
     {
         id: ToolGroupId.InterceptUnsafe,
         label: "Intercept changes",
         tools: [],
-        defaultMode: "confirm",
+        defaultMode: "auto",
     },
     { id: ToolGroupId.UpstreamSafe, label: "Upstream reads", tools: [], defaultMode: "auto" },
     {
         id: ToolGroupId.UpstreamUnsafe,
         label: "Upstream changes",
         tools: [],
-        defaultMode: "confirm",
+        defaultMode: "auto",
     },
-    { id: ToolGroupId.ReplaySafe, label: "Replay safe", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.ReplaySafe, label: "Replay safe", tools: [], defaultMode: "auto" },
     { id: ToolGroupId.ReplayUnsafe, label: "Replay unsafe", tools: [], defaultMode: "disabled" },
     { id: ToolGroupId.RequestSafe, label: "Request safe", tools: [], defaultMode: "auto" },
     { id: ToolGroupId.RequestUnsafe, label: "Request unsafe", tools: [], defaultMode: "disabled" },
     { id: ToolGroupId.RuntimeSafe, label: "Runtime info", tools: [], defaultMode: "auto" },
     { id: ToolGroupId.SitemapSafe, label: "Sitemap", tools: [], defaultMode: "auto" },
-    { id: ToolGroupId.ScopeSafe, label: "Scope safe", tools: [], defaultMode: "confirm" },
-    { id: ToolGroupId.ScopeUnsafe, label: "Scope unsafe", tools: [], defaultMode: "confirm" },
+    { id: ToolGroupId.ScopeSafe, label: "Scope safe", tools: [], defaultMode: "auto" },
+    { id: ToolGroupId.ScopeUnsafe, label: "Scope unsafe", tools: [], defaultMode: "auto" },
     {
         id: ToolGroupId.TamperSafe,
         label: "Tamper (Match & Replace) safe",
@@ -132,7 +132,7 @@ const BASE_GROUPS: ToolGroupSeed[] = [
 ];
 
 const DEFAULT_MODE: ToolGroupMode = "disabled";
-const PERMISSION_PROFILE_VERSION = 1;
+const PERMISSION_PROFILE_VERSION = 2;
 const HIDDEN_GROUP_IDS = new Set<string>([]);
 
 const createBaseGroups = (): ToolGroup[] =>
@@ -225,11 +225,20 @@ export class ToolPermissionsStore {
             this.permissionProfileVersion = Number(parsed.permissionProfileVersion ?? 0);
             const profileMigrated = this.permissionProfileVersion < PERMISSION_PROFILE_VERSION;
             if (profileMigrated) {
-                this.states = {
-                    ...this.states,
-                    [ToolGroupId.RequestSafe]: "auto",
-                    [ToolGroupId.WsSafe]: "auto",
-                };
+                const defaults = createDefaultStates();
+                this.states = Object.fromEntries(
+                    Object.entries(this.states).map(([groupId, mode]) => [
+                        groupId,
+                        mode === "confirm" || mode === "guarded-auto"
+                            ? (defaults[groupId] ?? DEFAULT_MODE)
+                            : mode,
+                    ]),
+                );
+                this.toolStates = Object.fromEntries(
+                    Object.entries(this.toolStates).filter(
+                        ([, mode]) => mode !== "confirm" && mode !== "guarded-auto",
+                    ),
+                );
                 this.permissionProfileVersion = PERMISSION_PROFILE_VERSION;
             }
             if (merged.migrated || profileMigrated) {

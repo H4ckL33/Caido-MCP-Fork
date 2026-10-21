@@ -107,7 +107,7 @@ export const registerWorkflowTools = ({ server, sdk, store, permissions }: ToolC
         inputSchema: z
             .object({ definition: definitionSchema, global: z.boolean().default(false) })
             .strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         safetyCheck: (params) => {
             const input = z
@@ -132,7 +132,7 @@ export const registerWorkflowTools = ({ server, sdk, store, permissions }: ToolC
         toolName: "update_workflow",
         description: "Update a workflow with a reviewed, non-networked definition.",
         inputSchema: z.object({ id: idSchema, definition: definitionSchema }).strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         safetyCheck: (params) => {
             const input = z
@@ -161,7 +161,7 @@ export const registerWorkflowTools = ({ server, sdk, store, permissions }: ToolC
         description:
             "Enable or disable a workflow. Enabling can affect future proxy traffic and always requires confirmation by default.",
         inputSchema: z.object({ id: idSchema, enabled: z.boolean() }).strict(),
-        defaultMode: "confirm",
+        defaultMode: "disabled",
         readOnly: false,
         handler: async (params) => {
             const input = z.object({ id: idSchema, enabled: z.boolean() }).strict().parse(params);
@@ -177,7 +177,7 @@ export const registerWorkflowTools = ({ server, sdk, store, permissions }: ToolC
         description:
             "Run a convert workflow on local base64 input. Only definitions without shell, process, or network capabilities are admitted.",
         inputSchema: z.object({ id: idSchema, input_base64: z.string() }).strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         safetyCheck: async (params) => {
             const { id } = z

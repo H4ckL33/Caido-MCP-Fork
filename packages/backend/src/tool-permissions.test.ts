@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -51,4 +51,48 @@ test("history-only request and websocket groups default to auto", async (t) => {
 
     assert.equal(store.getModeForAction("request.read"), "auto");
     assert.equal(store.getModeForAction("websocket.read"), "auto");
+});
+
+test("proxy-observer profile has no confirmation defaults and disables active egress", async (t) => {
+    const { directory, store } = await makeStore();
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    store.registerTool("project.select", ToolGroupId.ProjectUnsafe, "select project");
+    store.registerTool("scope.update", ToolGroupId.ScopeUnsafe, "update scope");
+    store.registerTool("request.send", ToolGroupId.RequestUnsafe, "send request");
+    store.registerTool("policy.install", ToolGroupId.PolicyUnsafe, "install grant");
+
+    const permissions = store.getPermissions();
+    assert.equal(Object.values(permissions.states).includes("confirm"), false);
+    assert.equal(store.getModeForAction("project.select"), "auto");
+    assert.equal(store.getModeForAction("scope.update"), "auto");
+    assert.equal(store.getModeForAction("request.send"), "disabled");
+    assert.equal(store.getModeForAction("policy.install"), "disabled");
+});
+
+test("profile v2 removes persisted confirmation blockers", async (t) => {
+    const directory = await mkdtemp(join(tmpdir(), "caido-permissions-"));
+    t.after(() => rm(directory, { recursive: true, force: true }));
+    await writeFile(
+        join(directory, "tool-permissions.json"),
+        JSON.stringify({
+            permissionProfileVersion: 1,
+            groups: [],
+            states: {
+                [ToolGroupId.ProjectUnsafe]: "confirm",
+                [ToolGroupId.RequestUnsafe]: "guarded-auto",
+            },
+            toolStates: { "project.select": "confirm", "request.send": "guarded-auto" },
+        }),
+    );
+    const sdk = {
+        meta: { path: () => directory },
+        console: { error: () => undefined },
+    } as unknown as MCPSDK;
+    const store = new ToolPermissionsStore(sdk);
+    await store.load();
+    store.registerTool("project.select", ToolGroupId.ProjectUnsafe, "select project");
+    store.registerTool("request.send", ToolGroupId.RequestUnsafe, "send request");
+
+    assert.equal(store.getModeForAction("project.select"), "auto");
+    assert.equal(store.getModeForAction("request.send"), "disabled");
 });

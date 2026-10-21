@@ -79,7 +79,7 @@ export const registerProjectTools = ({ server, sdk, store, permissions }: ToolCo
         inputSchema: z
             .object({ name: z.string().min(1).max(200), temporary: z.boolean().default(false) })
             .strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async (params) => {
             const input = z
@@ -97,7 +97,7 @@ export const registerProjectTools = ({ server, sdk, store, permissions }: ToolCo
         toolName: "rename_project",
         description: "Rename a Caido project.",
         inputSchema: z.object({ id: projectIdSchema, name: z.string().min(1).max(200) }).strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async (params) => {
             const input = z
@@ -116,7 +116,7 @@ export const registerProjectTools = ({ server, sdk, store, permissions }: ToolCo
         description:
             "Select a Caido project. The plugin can reload during selection, so the caller must verify the selected project and must not retry an ambiguous response automatically.",
         inputSchema: z.object({ id: projectIdSchema }).strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async (params) => {
             const input = z.object({ id: projectIdSchema }).strict().parse(params);

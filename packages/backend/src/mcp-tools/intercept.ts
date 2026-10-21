@@ -30,7 +30,7 @@ export const registerInterceptTools = ({ server, sdk, store, permissions }: Tool
         toolName: "pause_intercept",
         description: "Pause Caido Intercept. This changes global operator traffic handling.",
         inputSchema: z.object({}).strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async () => {
             const response = await sdk.graphql.execute(PAUSE_INTERCEPT_MUTATION);
@@ -44,7 +44,7 @@ export const registerInterceptTools = ({ server, sdk, store, permissions }: Tool
         toolName: "resume_intercept",
         description: "Resume Caido Intercept. This changes global operator traffic handling.",
         inputSchema: z.object({}).strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async () => {
             const response = await sdk.graphql.execute(RESUME_INTERCEPT_MUTATION);

@@ -65,7 +65,7 @@ export const registerUpstreamTools = ({ server, sdk, store, permissions }: ToolC
             toolName: `create_upstream_${kind}_proxy`,
             description: `Create a disabled-by-default ${kind.toUpperCase()} upstream proxy configuration. Enabling it affects subsequent traffic.`,
             inputSchema: schema,
-            defaultMode: "confirm",
+            defaultMode: "auto",
             readOnly: false,
             handler: async (params) => {
                 const input = schema.parse(params);
@@ -91,7 +91,7 @@ export const registerUpstreamTools = ({ server, sdk, store, permissions }: ToolC
             toolName: `update_upstream_${kind}_proxy`,
             description: `Replace a ${kind.toUpperCase()} upstream proxy configuration.`,
             inputSchema: schema,
-            defaultMode: "confirm",
+            defaultMode: "auto",
             readOnly: false,
             handler: async (params) => {
                 const input = schema.parse(params);
@@ -116,7 +116,7 @@ export const registerUpstreamTools = ({ server, sdk, store, permissions }: ToolC
             toolName: `toggle_upstream_${kind}_proxy`,
             description: `Enable or disable a ${kind.toUpperCase()} upstream proxy.`,
             inputSchema: schema,
-            defaultMode: "confirm",
+            defaultMode: "auto",
             readOnly: false,
             handler: async (params) => {
                 const input = schema.parse(params);

@@ -587,7 +587,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions, policy }
         description:
             "Send saved requests under a confirmed execution grant. operation_id is single-use; quota is reserved before egress and transport failures remain delivery-ambiguous 0..1 without retry.",
         inputSchema: guardedSendRequestsSchema,
-        defaultMode: "guarded-auto",
+        defaultMode: "disabled",
         readOnly: false,
         annotations: { openWorldHint: true, destructiveHint: true, idempotentHint: false },
         safetyCheck: async (params) => {
@@ -667,7 +667,7 @@ export const registerRequestTools = ({ server, sdk, store, permissions, policy }
         description:
             "Send crafted raw HTTP requests under a confirmed execution grant. Raw bytes must be fully inspectable and satisfy outbound-content policy.",
         inputSchema: guardedSendRawRequestsSchema,
-        defaultMode: "guarded-auto",
+        defaultMode: "disabled",
         readOnly: false,
         annotations: { openWorldHint: true, destructiveHint: true, idempotentHint: false },
         safetyCheck: async (params) => {

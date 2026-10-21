@@ -66,7 +66,7 @@ export const registerAutomateTools = ({ server, sdk, store, permissions }: ToolC
         description:
             "Create an Automate session from a saved request for operator configuration. This tool does not start traffic.",
         inputSchema: z.object({ request_id: idSchema }).strict(),
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async (params) => {
             const { request_id } = z.object({ request_id: idSchema }).strict().parse(params);

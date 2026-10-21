@@ -140,7 +140,7 @@ export const registerPolicyTools = ({ server, sdk, store, permissions, policy }:
         description:
             "Install a bounded local projection of an existing authorization. Requires confirmation and binds targets, methods, project, expiry, scope digest, and request budget.",
         inputSchema: installGrantSchema,
-        defaultMode: "confirm",
+        defaultMode: "disabled",
         readOnly: false,
         handler: async (params) => {
             const input = installGrantSchema.parse(params);
@@ -180,7 +180,7 @@ export const registerPolicyTools = ({ server, sdk, store, permissions, policy }:
         toolName: "revoke_execution_grant",
         description: "Revoke an execution grant. Revocation is permanent for that grant ID.",
         inputSchema: z.object({ id: idSchema }).strict(),
-        defaultMode: "confirm",
+        defaultMode: "disabled",
         readOnly: false,
         handler: async (params) => {
             const { id } = z.object({ id: idSchema }).strict().parse(params);

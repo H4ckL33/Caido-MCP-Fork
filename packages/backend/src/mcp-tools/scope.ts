@@ -79,7 +79,7 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
             "Create scopes. " +
             'Example: { "items": [{ "name": "In scope", "allowlist": ["example.com"], "denylist": ["*.png"] }] }.',
         inputSchema: scopeCreateSchema,
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async (params) => {
             const { items } = scopeCreateSchema.parse(params);
@@ -105,7 +105,7 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
             "Update a scope. " +
             'Example: { "id": 1, "input": { "name": "In scope", "allowlist": ["example.com"], "denylist": [] } }.',
         inputSchema: scopeUpdateSchema,
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async (params) => {
             const response = await sdk.graphql.execute(UPDATE_SCOPE_MUTATION, params);
@@ -121,7 +121,7 @@ export const registerScopeTools = ({ server, sdk, store, permissions }: ToolCont
         toolName: "rename_scope",
         description: "Rename scopes.",
         inputSchema: scopeRenameSchema,
-        defaultMode: "confirm",
+        defaultMode: "auto",
         readOnly: false,
         handler: async (params) => {
             const { items } = scopeRenameSchema.parse(params);
